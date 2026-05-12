@@ -1,0 +1,25 @@
+{
+  "name": "@zctl/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@zctl/config": "workspace:*",
+    "@zctl/shared": "workspace:*",
+    "commander": "^14.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0",
+    "tsx": "^4.19",
+    "@types/node": "^25.7",
+    "vitest": "^4.1"
+  }
+}

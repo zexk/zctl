@@ -1,0 +1,20 @@
+import Fastify from 'fastify';
+import fastifyWebsocket from '@fastify/websocket';
+import cors from '@fastify/cors';
+import { healthRoute } from './routes/health.js';
+import { wsHandler } from './ws/handler.js';
+
+export async function buildApp(opts: { logger: boolean }) {
+  const app = Fastify(opts);
+
+  await app.register(cors);
+  await app.register(fastifyWebsocket);
+
+  app.get('/health', healthRoute);
+
+  app.register(async function (fastify) {
+    fastify.get('/ws', { websocket: true }, wsHandler);
+  });
+
+  return app;
+}

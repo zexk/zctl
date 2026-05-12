@@ -1,0 +1,13 @@
+{
+  "name": "zctl",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @zctl/core dev",
+    "build": "pnpm -r build",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}

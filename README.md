@@ -2,7 +2,7 @@
 
 Lightweight self-hosted remote machine orchestration. Single backend, Go agents, JSON message protocol over persistent WebSocket connection.
 
-![demo](./demo.gif)
+![demo](./assets/demo.gif)
 
 ## Quick start
 

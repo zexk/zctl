@@ -39,6 +39,18 @@ func (a *Agent) Run() {
 
 		log.Printf("connected to core as %s", a.machineID)
 
+		go func() {
+			ticker := time.NewTicker(15 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				msg := map[string]string{"type": "heartbeat", "machineId": a.machineID}
+				data, _ := json.Marshal(msg)
+				if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+					return
+				}
+			}
+		}()
+
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {

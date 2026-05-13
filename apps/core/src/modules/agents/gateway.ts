@@ -2,6 +2,7 @@ import type { FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import { agentRegistry } from './registry.js';
 import { pendingExecs } from '../exec/pending.js';
+import { touchByHostname } from '../machines/repository.js';
 
 export function handleConnection(socket: WebSocket, request: FastifyRequest) {
   const machineId = (request.query as { machineId?: string }).machineId;
@@ -17,6 +18,11 @@ export function handleConnection(socket: WebSocket, request: FastifyRequest) {
       if (msg.type === 'hello') {
         agentRegistry.add(msg.machineId, socket);
         request.log.info({ machineId: msg.machineId }, 'agent connected');
+        return;
+      }
+
+      if (msg.type === 'heartbeat') {
+        touchByHostname(machineId).catch(() => {});
         return;
       }
 

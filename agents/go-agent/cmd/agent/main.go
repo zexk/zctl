@@ -19,15 +19,19 @@ func main() {
 	client := api.New(cfg.CoreURL)
 	info := machine.Collect(cfg.Hostname)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := client.Register(ctx, api.RegisterRequest{
-		Hostname: info.Hostname,
-		OS:       info.OS,
-		Arch:     info.Arch,
-	}); err != nil {
-		log.Fatalf("registration failed: %v", err)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		err := client.Register(ctx, api.RegisterRequest{
+			Hostname: info.Hostname,
+			OS:       info.OS,
+			Arch:     info.Arch,
+		})
+		cancel()
+		if err == nil {
+			break
+		}
+		log.Printf("registration failed: %v (retry in 3s)", err)
+		time.Sleep(3 * time.Second)
 	}
 
 	log.Printf("registered as %s (%s/%s)", info.Hostname, info.OS, info.Arch)

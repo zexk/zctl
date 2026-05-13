@@ -1,0 +1,7 @@
+node_modules/
+.git/
+.direnv/
+.env
+*.env
+dist/
+agent

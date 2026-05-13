@@ -2,10 +2,12 @@ package config
 
 import (
 	"os"
+	"strings"
 )
 
 type Config struct {
 	CoreURL  string
+	WsURL    string
 	Hostname string
 }
 
@@ -15,6 +17,11 @@ func Load() Config {
 		coreURL = "http://localhost:3000"
 	}
 
+	wsURL := os.Getenv("WS_URL")
+	if wsURL == "" {
+		wsURL = strings.Replace(coreURL, "http://", "ws://", 1) + "/ws"
+	}
+
 	hostname := os.Getenv("HOSTNAME")
 	if hostname == "" {
 		hostname, _ = os.Hostname()
@@ -22,6 +29,7 @@ func Load() Config {
 
 	return Config{
 		CoreURL:  coreURL,
+		WsURL:    wsURL,
 		Hostname: hostname,
 	}
 }

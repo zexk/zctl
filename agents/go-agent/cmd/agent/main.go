@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/bouraoui/zctl/agent/internal/agent"
 	"github.com/bouraoui/zctl/agent/internal/api"
 	"github.com/bouraoui/zctl/agent/internal/config"
 	"github.com/bouraoui/zctl/agent/internal/machine"
@@ -27,4 +31,12 @@ func main() {
 	}
 
 	log.Printf("registered as %s (%s/%s)", info.Hostname, info.OS, info.Arch)
+
+	ag := agent.New(cfg.WsURL, info.Hostname)
+	go ag.Run()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+	log.Println("shutting down")
 }

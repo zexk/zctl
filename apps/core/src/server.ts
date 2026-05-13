@@ -1,6 +1,7 @@
 import { env } from './config/env.js';
 import { buildApp } from './app.js';
 import { verifyConnection } from './db/index.js';
+import { agentRegistry } from './modules/agents/registry.js';
 
 export async function startServer() {
   const app = await buildApp({ logger: true });
@@ -15,6 +16,7 @@ export async function startServer() {
 
   const shutdown = async () => {
     app.log.info('shutting down...');
+    agentRegistry.closeAll();
     await app.close();
   };
 

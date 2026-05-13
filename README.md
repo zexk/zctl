@@ -66,8 +66,6 @@ pnpm typecheck
 cd agents/go-agent && go build ./...
 ```
 
-See [AGENTS.md](./AGENTS.md) for toolchain details and [DESIGN.md](./DESIGN.md) for architecture decisions.
-
 ## Repository structure
 
 ```

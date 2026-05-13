@@ -8,6 +8,13 @@
       "when": 1778660291137,
       "tag": "0000_strong_wrecking_crew",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778664996625,
+      "tag": "0001_unusual_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

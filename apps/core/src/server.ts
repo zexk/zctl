@@ -1,8 +1,17 @@
 import { env } from './config/env.js';
 import { buildApp } from './app.js';
+import { verifyConnection } from './db/index.js';
 
 export async function startServer() {
   const app = await buildApp({ logger: true });
+
+  try {
+    await verifyConnection();
+  } catch (err) {
+    app.log.fatal(err, 'database connection failed');
+    process.exit(1);
+  }
+  app.log.info('database connected');
 
   const shutdown = async () => {
     app.log.info('shutting down...');

@@ -1,351 +1,284 @@
-# AGENTS.md
+# DESIGN.md
 
-## Project Overview
+## Overview
 
-zctl is a lightweight self-hosted remote machine orchestration platform.
+zctl is a lightweight self-hosted remote machine orchestration platform. It provides persistent connectivity to remote machines, remote command execution, heartbeat monitoring, and execution history — without the complexity of Kubernetes or Ansible.
 
-The system consists of:
-- a central backend service (`core`)
-- lightweight machine agents (`agent`)
-- a CLI interface (`cli`)
-
-Primary goals:
-- persistent machine connectivity
-- remote command execution
-- realtime communication
-- observability/heartbeat reporting
-- maintainable architecture
-- strong developer experience
-
-The project is intentionally scoped as a small infrastructure tool, not a Kubernetes/Ansible replacement.
+The system intentionally favors simplicity over scale: a single backend, JSON-over-WebSocket protocol, in-memory connection state, and synchronous command execution.
 
 ---
 
-# Architecture
+## Architecture
 
 ```txt
-CLI → Core API/WebSocket Server ← Agents
+CLI (planned) → Core API/WebSocket Server ← Agents (Go)
+                      ↕
+                PostgreSQL
 ```
 
-Agents maintain persistent websocket connections to the core service.
+### Components
 
-The core service:
-- authenticates agents
-- routes commands
-- stores execution results
-- exposes APIs
-- manages machine state
+| Component | Language | Role |
+|---|---|---|
+| **Core** | TypeScript / Node.js | HTTP API, WebSocket gateway, connection registry, execution orchestration |
+| **Agent** | Go | Persistent WebSocket connection, command execution (`sh -c`), heartbeat reporting |
+| **CLI** | TypeScript (planned) | Operator-facing CLI |
 
-The CLI communicates exclusively with the core service.
+Agents connect to the core via WebSocket and register via HTTP. The core exposes a REST API for machine management and command execution. All realtime communication flows over a single WebSocket connection per agent.
 
 ---
 
-# Repository Structure
+## Component Breakdown
 
-```txt
-zctl/
-├── apps/
-│   ├── core
-│   └── cli
-├── agents/
-│   └── go-agent
-├── packages/
-│   ├── protocol
-│   ├── config
-│   └── shared
-├── flake.nix
-├── docker-compose.yml
-└── AGENTS.md
+### Core (`apps/core`)
+
+**Stack:** Fastify, Drizzle ORM, PostgreSQL, `@fastify/websocket`, Zod, Pino
+
+**Module structure:**
+
+```
+src/
+├── config/env.ts           — validated env loading (dotenv + Zod)
+├── db/
+│   ├── client.ts           — Drizzle + postgres connection
+│   └── schema/
+│       ├── machines.ts     — machines table
+│       └── executions.ts   — command_executions table
+├── modules/
+│   ├── agents/
+│   │   ├── gateway.ts      — WebSocket message router
+│   │   ├── registry.ts     — in-memory Map<hostname, WebSocket>
+│   │   └── types.ts
+│   ├── machines/
+│   │   ├── repository.ts   — DB access for machines
+│   │   ├── service.ts      — business logic + status computation
+│   │   └── routes.ts       — GET /machines, POST /machines/register
+│   ├── exec/
+│   │   ├── service.ts      — orchestrates command execution
+│   │   ├── pending.ts      — async pending request tracker
+│   │   ├── routes.ts       — POST /machines/:id/exec
+│   │   └── types.ts
+│   └── executions/
+│       ├── repository.ts   — DB access for command_executions
+│       ├── service.ts      — execution lifecycle
+│       └── routes.ts       — GET /machines/:id/executions
+├── routes/health.ts
+├── ws/handler.ts
+├── app.ts                  — Fastify factory (no listening)
+├── server.ts               — startup, DB verify, shutdown hooks
+└── index.ts                — entry: import { startServer }; await startServer()
 ```
 
-Monorepo rationale:
-- shared protocol types
-- unified tooling
-- simpler development workflow
-- cleaner dependency management
+Key design decisions:
+
+- **app.ts** is a pure factory. It creates and configures Fastify but never calls `listen()`. This makes testing and lifecycle management clean.
+- **server.ts** owns startup ordering: validate env → connect DB → build app → register shutdown hooks → listen. It also holds `pendingExecs.rejectAll()` and `agentRegistry.closeAll()` during shutdown.
+- **`@fastify/websocket`** provides the WebSocket plugin. Routes using WebSocket are registered inside `app.register()` scopes.
+
+### Agent (`agents/go-agent`)
+
+**Stack:** Go 1.26, gorilla/websocket, standard library
+
+```
+cmd/agent/main.go           — entry: register HTTP → connect WS → block on signal
+internal/
+├── agent/agent.go          — WS connect loop, read loop, heartbeat ticker
+├── api/client.go           — HTTP client for /machines/register
+├── config/config.go        — env loading (CORE_URL, HOSTNAME)
+├── exec/exec.go            — exec.Command("sh", "-c", ...) runner
+└── machine/info.go         — collects hostname, GOOS, GOARCH
+```
+
+The agent is a standard-library-only binary (except gorilla/websocket). It has no external configuration file — all config comes from environment variables. The agent runs until signaled, reconnecting automatically if the WebSocket drops.
+
+### Protocol
+
+All WebSocket messages are JSON. The protocol uses a `type` discriminator.
+
+```typescript
+// Agent → Core on connect
+{ "type": "hello", "machineId": "hostname" }
+
+// Agent → Core every 15s
+{ "type": "heartbeat", "machineId": "hostname" }
+
+// Core → Agent for command execution
+{ "type": "exec", "requestId": "uuid", "command": "uptime" }
+
+// Agent → Core with execution result
+{ "type": "exec_result", "requestId": "uuid", "stdout": "...", "stderr": "...", "exitCode": 0 }
+```
+
+Connection is established at `ws://core:3000/ws?machineId=hostname`. No authentication yet.
 
 ---
 
-# Development Environment
+## Machine Lifecycle
 
-## Nix / flake.nix
+```
+HTTP register ──→ DB insert/update (machines table)
+       │
+       ▼
+WS connect  ──→ ?machineId= query param
+       │
+       ▼
+hello msg  ──→ in-memory registry adds Map<hostname, socket>
+       │
+       ▼
+heartbeat ──→ updates machines.last_seen every 15s
+       │
+       ▼
+disconnect ──→ registry removes entry
+       │
+       ▼
+offline    ──→ status derived: last_seen > 30s → offline
+```
 
-The project uses a `flake.nix` as:
-- the primary development environment
-- a reproducible build environment
-- dependency orchestration for local development
+**Status is derived, not stored.** The `GET /machines` endpoint computes `status` per-request by checking if `lastSeen` is within 30 seconds. This avoids stale state bugs and keeps the persistence model simple.
 
-The flake should provide:
-- Node.js
-- pnpm
-- Go toolchain
-- PostgreSQL client tools
-- linting/formatting tooling
-- optional debugging/networking utilities
+---
 
-Goals:
-- reproducible onboarding
-- minimal host setup
-- consistent tooling across environments
+## Command Execution Flow
 
-Docker is used for service orchestration where appropriate, but the flake remains the primary developer entrypoint.
+```
+POST /machines/:hostname/exec
+  │  { "command": "uptime" }
+  ▼
+exec/service.ts
+  │  resolve hostname → UUID via machines repository
+  │  check agent is connected (in-memory registry)
+  │  create command_executions row (status: pending)
+  │  generate requestId
+  │  send { type:"exec", requestId, command } via WebSocket
+  │  register pending promise: pendingExecs.add(requestId, timeout=10s)
+  ▼
+pending.ts (in-memory Map)
+  │  Map<string, { resolve, reject, timer }>
+  │  timer will reject after 10s if no response
+  ▼
+Agent receives message
+  │  parse → msg.type === "exec"
+  │  exec.Command("sh", "-c", command)
+  │  collect stdout, stderr, exit code
+  │  send { type:"exec_result", requestId, stdout, stderr, exitCode }
+  ▼
+Core gateway.ts receives exec_result
+  │  pendingExecs.resolve(requestId, result)
+  │  clears timer, deletes Map entry, resolves promise
+  ▼
+exec/service.ts
+  │  executions service updates row (status: completed)
+  │  returns result to HTTP caller
+  ▼
+HTTP 200 { stdout, stderr, exitCode }
+```
 
-Example workflow:
+### Error paths
+
+| Scenario | Behavior |
+|---|---|
+| Machine not registered | 404 machine not found |
+| Machine not connected | 502 machine not connected |
+| Agent crashes mid-exec | 10s timeout → row marked `timeout` |
+| Core restarts mid-exec | `pendingExecs.rejectAll()` in shutdown hook |
+
+This is the most architecturally interesting piece: the **pending request tracker** (`modules/exec/pending.ts`) implements async distributed coordination with zero external dependencies — just a `Map<string, { resolve, reject, timer }>`.
+
+---
+
+## Persistence Model
+
+### Machines
+
+```sql
+CREATE TABLE machines (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  hostname   TEXT NOT NULL UNIQUE,
+  os         TEXT,
+  arch       TEXT,
+  last_seen  TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT now()
+);
+```
+
+### Command Executions
+
+```sql
+CREATE TABLE command_executions (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  machine_id   UUID NOT NULL REFERENCES machines(id),
+  command      TEXT NOT NULL,
+  stdout       TEXT,
+  stderr       TEXT,
+  exit_code    INTEGER,
+  status       TEXT NOT NULL DEFAULT 'pending',
+  created_at   TIMESTAMP NOT NULL DEFAULT now(),
+  completed_at TIMESTAMP
+);
+```
+
+Status values: `pending` → `completed` | `timeout`
+
+---
+
+## Design Constraints
+
+Explicit scope boundaries:
+
+- **Not Kubernetes.** No pod management, no scheduling, no container orchestration. This is a tool for managing bare-metal or VPS machines.
+- **Not Ansible.** No idempotency, no playbooks, no DSL. Commands are single-shot `sh -c` executions.
+- **Single-core.** One core process. Horizontal scaling is not a goal.
+- **In-memory registry.** Connected agents live in a `Map<string, WebSocket>`, not a database. Restarting core loses all connection state (agents reconnect automatically).
+- **JSON protocol.** Binary serialization is explicitly deferred until there's evidence it's needed.
+- **No auth yet.** Machine identity is self-declared via `?machineId=` query parameter. Authentication will be added when the system has more than one operator.
+- **No streaming.** Command output is collected and returned as a single block. Interactive terminal sessions and real-time log streaming are future work.
+- **Minimal dependencies.** The Go agent depends only on `gorilla/websocket`. The core uses Fastify + Drizzle + Zod + Pino, which is lean for a Node.js backend.
+
+---
+
+## Development Environment
+
+### Quick Start
 
 ```bash
-nix develop
-pnpm install
-docker compose up -d
+nix develop              # enter devshell (flake)
+pnpm install             # install JS dependencies
+docker compose up -d     # start PostgreSQL
+pnpm db:migrate          # apply schema
+pnpm --filter @zctl/core dev  # start core on :3000
 ```
 
----
+### Toolchain
 
-# Core Backend (`apps/core`)
+| Tool | Version | Notes |
+|---|---|---|
+| Go | 1.26 | agent |
+| Node.js | 25 | core + CLI |
+| pnpm | 10 | package manager |
+| PostgreSQL | 17 | database |
+| golangci-lint | 2.x | Go linting |
+| prettier | 3.x | code formatting |
+| eslint | 10.x | JS linting |
+| gcc | 15.x | CGo support for Go agent |
 
-## Language
-TypeScript
-
-## Runtime
-Node.js
-
-## Framework
-Fastify
-
-Rationale:
-- performant
-- good typing support
-- cleaner architecture than Express
-- plugin ecosystem suitable for infrastructure tooling
-
-## ORM
-Drizzle ORM
-
-Rationale:
-- SQL-first
-- lightweight
-- excellent TypeScript support
-- avoids heavy abstraction
-
-## Database
-PostgreSQL
-
-Rationale:
-- industry standard
-- reliable relational modeling
-- good operational tooling
-
-## Realtime Transport
-WebSocket (`ws`)
-
-Rationale:
-- persistent bidirectional communication
-- low protocol overhead
-- sufficient for MVP requirements
-
-## Validation
-Zod
-
-Used for:
-- env validation
-- API schemas
-- protocol validation
-
-## Logging
-Pino
-
-Requirements:
-- structured JSON logging
-- request correlation
-- production-friendly output
-
----
-
-# Agent (`agents/go-agent`)
-
-## Language
-Go
-
-Rationale:
-- static binaries
-- strong standard library
-- excellent networking support
-- simple concurrency model
-- fast iteration compared to C
-
-## Responsibilities
-- establish websocket connection
-- authenticate with core
-- execute commands
-- stream results/events
-- send heartbeat + machine metrics
-
-## Non-Goals
-- container orchestration
-- privilege escalation
-- SSH replacement
-- sandboxing
-
----
-
-# CLI (`apps/cli`)
-
-## Language
-TypeScript
-
-## Runtime
-Node.js
-
-## Framework
-Commander.js
-
-Responsibilities:
-- operator interaction
-- command submission
-- machine inspection
-- log viewing
-
-Example commands:
+### Verification
 
 ```bash
-zctl machines
-zctl exec machine-1 "uptime"
-zctl logs machine-1
+pnpm typecheck                              # all TypeScript
+cd agents/go-agent && go build ./...        # Go agent
+nix flake check                             # full flake validation
 ```
 
 ---
 
-# Protocol
+## Future Work
 
-## Serialization
-JSON
+In rough priority order:
 
-Rationale:
-- debuggable
-- easy iteration
-- sufficient for MVP
-
-Binary serialization may be explored later if needed.
-
-## Message Structure
-
-```json
-{
-  "type": "heartbeat",
-  "machineId": "abc123",
-  "payload": {}
-}
-```
-
-Protocol messages must:
-- be versionable
-- remain explicit
-- avoid hidden magic behavior
-
----
-
-# MVP Scope
-
-## Included
-- agent registration
-- authenticated websocket connections
-- heartbeat reporting
-- remote command execution
-- command result persistence
-- machine listing
-- CLI interaction
-
-## Excluded
-- RBAC
-- multi-user organizations
-- scheduling
-- orchestration DSLs
-- plugins
-- cluster management
-- distributed execution
-- container support
-
----
-
-# Development Standards
-
-## Formatting
-Prettier
-
-## Linting
-ESLint
-
-## Type Safety
-Strict TypeScript mode enabled.
-
-Avoid:
-- `any`
-- implicit returns
-- hidden runtime coercions
-
-## Git
-Conventional commits preferred.
-
-Example:
-
-```txt
-feat(core): add websocket heartbeat handling
-```
-
----
-
-# Documentation Requirements
-
-Every major component should contain:
-- setup instructions
-- architecture notes
-- protocol documentation
-- examples where relevant
-
-Priority:
-- clarity
-- maintainability
-- reproducibility
-
----
-
-# Deployment
-
-## Local Development
-
-Docker Compose services:
-- postgres
-- core
-
-## Future Considerations
-- containerized deployment
-- reverse proxy support
-- TLS termination
-- systemd service support
-
----
-
-# Design Principles
-
-## Prefer
-- simple solutions
-- explicit architecture
-- debuggability
-- operational clarity
-- reproducibility
-
-## Avoid
-- premature abstraction
-- unnecessary microservices
-- overengineering
-- framework-heavy magic
-- speculative scalability work
-
----
-
-# Success Criteria
-
-The MVP is successful when:
-1. an agent can connect to the core service
-2. commands can be remotely executed
-3. results are persisted and viewable
-4. another developer can run the project locally from documentation alone
+- **Authentication** — replace `?machineId=` with token-based agent auth
+- **CLI** — build the Commander.js CLI with `machines`, `exec`, `logs` commands
+- **Streaming execution** — real-time stdout/stderr delivery via WebSocket
+- **TLS** — terminate HTTPS/WSS at the core or via reverse proxy
+- **RBAC** — multi-user access control
+- **Agent deployment** — package agent binaries, install scripts, systemd units
+- **Structured logging** — move beyond `log.Printf` in the Go agent

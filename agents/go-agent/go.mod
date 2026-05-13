@@ -1,4 +1,4 @@
-module github.com/bouraoui/zctl/agent
+module github.com/zexk/zctl/agent
 
 go 1.26
 

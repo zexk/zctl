@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bouraoui/zctl/agent/internal/agent"
-	"github.com/bouraoui/zctl/agent/internal/api"
-	"github.com/bouraoui/zctl/agent/internal/config"
-	"github.com/bouraoui/zctl/agent/internal/machine"
+	"github.com/zexk/zctl/agent/internal/agent"
+	"github.com/zexk/zctl/agent/internal/api"
+	"github.com/zexk/zctl/agent/internal/config"
+	"github.com/zexk/zctl/agent/internal/machine"
 )
 
 func main() {

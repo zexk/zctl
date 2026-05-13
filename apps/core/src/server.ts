@@ -2,6 +2,7 @@ import { env } from './config/env.js';
 import { buildApp } from './app.js';
 import { verifyConnection } from './db/index.js';
 import { agentRegistry } from './modules/agents/registry.js';
+import { pendingExecs } from './modules/exec/pending.js';
 
 export async function startServer() {
   const app = await buildApp({ logger: true });
@@ -16,6 +17,7 @@ export async function startServer() {
 
   const shutdown = async () => {
     app.log.info('shutting down...');
+    pendingExecs.rejectAll();
     agentRegistry.closeAll();
     await app.close();
   };

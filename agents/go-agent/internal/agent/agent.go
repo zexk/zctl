@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/zexk/zctl/agent/internal/exec"
 )
 
 type Agent struct {
@@ -38,9 +40,34 @@ func (a *Agent) Run() {
 		log.Printf("connected to core as %s", a.machineID)
 
 		for {
-			if _, _, err := c.ReadMessage(); err != nil {
+			_, message, err := c.ReadMessage()
+			if err != nil {
 				log.Printf("disconnected: %v (reconnecting...)", err)
 				break
+			}
+
+			var msg map[string]any
+			if err := json.Unmarshal(message, &msg); err != nil {
+				continue
+			}
+
+			if msg["type"] == "exec" {
+				requestID, _ := msg["requestId"].(string)
+				command, _ := msg["command"].(string)
+
+				result := exec.Run(command)
+
+				response := map[string]any{
+					"type":      "exec_result",
+					"requestId": requestID,
+					"stdout":    result.Stdout,
+					"stderr":    result.Stderr,
+					"exitCode":  result.ExitCode,
+				}
+				data, _ := json.Marshal(response)
+				c.WriteMessage(websocket.TextMessage, data)
+
+				log.Printf("exec result: request=%s exit=%d", requestID, result.ExitCode)
 			}
 		}
 		c.Close()

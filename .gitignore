@@ -4,3 +4,4 @@ dist/
 *.env
 .direnv/
 agents/go-agent/agent
+record_demo.sh

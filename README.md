@@ -1,6 +1,8 @@
 # zctl
 
-Lightweight self-hosted remote machine orchestration. Single backend, Go agents, JSON-over-WebSocket protocol.
+Lightweight self-hosted remote machine orchestration. Single backend, Go agents, JSON message protocol over persistent WebSocket connection.
+
+![demo](./demo.gif)
 
 ## Quick start
 
@@ -30,15 +32,15 @@ curl -X POST http://localhost:3000/machines/docker-agent/exec \
 
 ## Capabilities
 
-- Machine registration and persistent WebSocket connectivity
-- Remote command execution (`sh -c`) with result persistence
-- Heartbeat-based online/offline detection (every 15s, 30s threshold)
-- Execution history per machine
+- Persistent machine registration and WebSocket connectivity
+- Remote command execution (`sh -c`) with execution persistence
+- Heartbeat-based online/offline state tracking
+- Per-machine execution history
 
 ## Architecture
 
 ```
-CLI (planned) --> Core API/WS Server <-- Agents (Go)
+CLI --> Core API/WS Server <-- Agents (Go)
                       |
                   PostgreSQL
 ```
@@ -68,10 +70,17 @@ cd agents/go-agent && go build ./...
 
 ## Repository structure
 
-```
-apps/core/           -- Backend API + WebSocket server
-agents/go-agent/     -- Machine agent binary
-packages/            -- Shared TypeScript packages (protocol, config, shared)
+```text
+apps/
+└── core/              Backend API and WebSocket server
+
+agents/
+└── go-agent/          Go agent binary
+
+packages/
+├── protocol/          Shared protocol definitions
+├── config/            Shared configuration utilities
+└── shared/            Shared TypeScript utilities
 ```
 
 ## Status

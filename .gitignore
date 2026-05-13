@@ -3,3 +3,4 @@ dist/
 .env
 *.env
 .direnv/
+agents/go-agent/agent

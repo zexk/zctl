@@ -13,7 +13,22 @@ docker compose up --build -d
 ```
 
 ```bash
-curl http://localhost:3000/machines
+# Register an agent (public endpoint, returns a JWT token)
+curl -s -X POST http://localhost:3000/machines/register \
+  -H "Content-Type: application/json" \
+  -d '{"hostname":"my-agent","os":"linux","arch":"x86_64"}'
+```
+
+```json
+{ "id": "uuid", "hostname": "my-agent", "token": "eyJ..." }
+```
+
+```bash
+# Generate an operator token (replace the secret with your JWT_SECRET)
+OP_TOKEN=$(node -e "console.log(require('jsonwebtoken').sign({sub:'admin',role:'operator'},'dev-secret-change-in-production',{expiresIn:'90d'}))")
+
+# List machines
+curl -H "Authorization: Bearer $OP_TOKEN" http://localhost:3000/machines
 ```
 
 ```json
@@ -21,8 +36,10 @@ curl http://localhost:3000/machines
 ```
 
 ```bash
+# Execute a command on a machine
 curl -X POST http://localhost:3000/machines/docker-agent/exec \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OP_TOKEN" \
   -d '{"command":"uptime"}'
 ```
 
@@ -33,6 +50,7 @@ curl -X POST http://localhost:3000/machines/docker-agent/exec \
 ## Capabilities
 
 - Persistent machine registration and WebSocket connectivity
+- JWT-based authentication with operator/agent role separation
 - Remote command execution (`sh -c`) with execution persistence
 - Heartbeat-based online/offline state tracking
 - Per-machine execution history
@@ -47,7 +65,7 @@ CLI --> Core API/WS Server <-- Agents (Go)
 
 | Component | Stack | Role |
 |---|---|---|
-| Core | TypeScript, Fastify, Drizzle, PostgreSQL | HTTP API, WebSocket gateway, connection registry |
+| Core | TypeScript, Fastify, Drizzle, PostgreSQL | HTTP API, WebSocket gateway, connection registry, JWT auth |
 | Agent | Go, gorilla/websocket | Persistent WS connection, command execution, heartbeats |
 | CLI | TypeScript, Commander.js (planned) | Operator-facing CLI |
 
@@ -85,4 +103,4 @@ packages/
 
 ## Status
 
-Core and agent are functional. CLI, authentication, and streaming execution are planned.
+Core and agent are functional. JWT-based authentication is wired in. CLI and streaming execution are planned.

@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/zctl
       PORT: "3000"
       HOST: "0.0.0.0"
+      JWT_SECRET: "${JWT_SECRET:-dev-secret-change-in-production}"
     depends_on:
       postgres:
         condition: service_healthy

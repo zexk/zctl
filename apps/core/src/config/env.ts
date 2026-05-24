@@ -5,7 +5,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default('postgres://postgres:postgres@localhost:5432/zctl'),
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),
-  JWT_SECRET: z.string().default('dev-secret-change-in-production'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRY_AGENT: z.string().default('24h'),
   JWT_EXPIRY_OPERATOR: z.string().default('90d'),
 });

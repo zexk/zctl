@@ -96,7 +96,16 @@ The agent is a standard-library-only binary (except gorilla/websocket). It has n
 All WebSocket messages are JSON. The protocol uses a `type` discriminator.
 
 ```typescript
-// Agent → Core on connect
+// Agent → Core immediately after WS connect (required before any other message)
+{ "type": "auth", "token": "<agent-jwt>" }
+
+// Core → Agent on successful authentication
+{ "type": "auth_ok" }
+
+// Core → Agent on failed authentication (socket is then closed with code 4001)
+{ "type": "auth_error", "reason": "invalid token" }
+
+// Agent → Core after auth_ok
 { "type": "hello", "machineId": "hostname" }
 
 // Agent → Core every 15s
@@ -109,29 +118,35 @@ All WebSocket messages are JSON. The protocol uses a `type` discriminator.
 { "type": "exec_result", "requestId": "uuid", "stdout": "...", "stderr": "...", "exitCode": 0 }
 ```
 
-Connection is established at `ws://core:3000/ws?machineId=hostname`. No authentication yet.
+Connection is established at `ws://core:3000/ws?machineId=hostname`. The agent must authenticate within a short window after connecting by sending an `auth` message carrying the JWT obtained during HTTP registration. Operator tokens are rejected for WebSocket connections. After `auth_ok`, the agent sends `hello` to join the in-memory registry.
 
 ---
 
 ## Machine Lifecycle
 
 ```
-HTTP register ──→ DB insert/update (machines table)
+HTTP register ──→ DB insert/update (machines table), returns agent JWT
        │
        ▼
 WS connect  ──→ ?machineId= query param
        │
        ▼
-hello msg  ──→ in-memory registry adds Map<hostname, socket>
+auth msg    ──→ sends {"type":"auth","token":"<jwt>"}
        │
        ▼
-heartbeat ──→ updates machines.last_seen every 15s
+auth_ok     ──→ server validates JWT (role=agent, hostname=param)
        │
        ▼
-disconnect ──→ registry removes entry
+hello msg   ──→ in-memory registry adds Map<hostname, socket>
        │
        ▼
-offline    ──→ status derived: last_seen > 30s → offline
+heartbeat   ──→ updates machines.last_seen every 15s
+       │
+       ▼
+disconnect  ──→ registry removes entry
+       │
+       ▼
+offline     ──→ status derived: last_seen > 30s → offline
 ```
 
 **Status is derived, not stored.** The `GET /machines` endpoint computes `status` per-request by checking if `lastSeen` is within 30 seconds. This avoids stale state bugs and keeps the persistence model simple.
@@ -230,7 +245,7 @@ Explicit scope boundaries:
 - **Single-core.** One core process. Horizontal scaling is not a goal.
 - **In-memory registry.** Connected agents live in a `Map<string, WebSocket>`, not a database. Restarting core loses all connection state (agents reconnect automatically).
 - **JSON protocol.** Binary serialization is explicitly deferred until there's evidence it's needed.
-- **No auth yet.** Machine identity is self-declared via `?machineId=` query parameter. Authentication will be added when the system has more than one operator.
+- **JWT authentication.** Agents authenticate with a signed JWT obtained at HTTP registration. Operator access requires a separate Bearer token with the `operator` role. Both are verified by the core on every request.
 - **No streaming.** Command output is collected and returned as a single block. Interactive terminal sessions and real-time log streaming are future work.
 - **Minimal dependencies.** The Go agent depends only on `gorilla/websocket`. The core uses Fastify + Drizzle + Zod + Pino, which is lean for a Node.js backend.
 
@@ -275,7 +290,6 @@ nix flake check                             # full flake validation
 
 In rough priority order:
 
-- **Authentication** — replace `?machineId=` with token-based agent auth
 - **CLI** — build the Commander.js CLI with `machines`, `exec`, `logs` commands
 - **Streaming execution** — real-time stdout/stderr delivery via WebSocket
 - **TLS** — terminate HTTPS/WSS at the core or via reverse proxy

@@ -31,8 +31,19 @@ export const ExecResultSchema = z.object({
   stderr: z.string(),
 });
 
+export const AuthOkSchema = z.object({
+  type: z.literal('auth_ok'),
+});
+
+export const AuthErrorSchema = z.object({
+  type: z.literal('auth_error'),
+  reason: z.string(),
+});
+
 export const ServerMessageSchema = z.discriminatedUnion('type', [
   ExecRequestSchema,
+  AuthOkSchema,
+  AuthErrorSchema,
 ]);
 
 export const AgentMessageSchema = z.discriminatedUnion('type', [

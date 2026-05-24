@@ -6,6 +6,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),
   JWT_SECRET: z.string().default('dev-secret-change-in-production'),
+  JWT_EXPIRY_AGENT: z.string().default('24h'),
+  JWT_EXPIRY_OPERATOR: z.string().default('90d'),
 });
 
 const result = envSchema.safeParse(process.env);

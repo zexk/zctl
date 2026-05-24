@@ -13,10 +13,11 @@ import (
 type Agent struct {
 	wsURL     string
 	machineID string
+	token     string
 }
 
-func New(wsURL, machineID string) *Agent {
-	return &Agent{wsURL: wsURL, machineID: machineID}
+func New(wsURL, machineID, token string) *Agent {
+	return &Agent{wsURL: wsURL, machineID: machineID, token: token}
 }
 
 func (a *Agent) Run() {
@@ -28,8 +29,36 @@ func (a *Agent) Run() {
 			continue
 		}
 
+		auth := map[string]string{"type": "auth", "token": a.token}
+		data, _ := json.Marshal(auth)
+		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+			log.Printf("auth send failed: %v (reconnecting...)", err)
+			c.Close()
+			time.Sleep(3 * time.Second)
+			continue
+		}
+
+		_, resp, err := c.ReadMessage()
+		if err != nil {
+			log.Printf("auth response failed: %v (reconnecting...)", err)
+			c.Close()
+			time.Sleep(3 * time.Second)
+			continue
+		}
+
+		var ack map[string]any
+		if err := json.Unmarshal(resp, &ack); err != nil || ack["type"] != "auth_ok" {
+			reason, _ := ack["reason"].(string)
+			log.Printf("auth rejected: %s (retry in 10s)", reason)
+			c.Close()
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		log.Printf("authenticated as %s", a.machineID)
+
 		hello := map[string]string{"type": "hello", "machineId": a.machineID}
-		data, _ := json.Marshal(hello)
+		data, _ = json.Marshal(hello)
 		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
 			log.Printf("hello send failed: %v (reconnecting...)", err)
 			c.Close()

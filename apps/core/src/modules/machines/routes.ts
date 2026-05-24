@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { requireRole } from '../../app.js';
 import * as service from './service.js';
 
 const registerSchema = z.object({
@@ -9,7 +10,7 @@ const registerSchema = z.object({
 });
 
 export async function machinesRoutes(app: FastifyInstance) {
-  app.get('/machines', async (_request, reply) => {
+  app.get('/machines', { preHandler: [requireRole('operator')] }, async (_request, reply) => {
     const machines = await service.listMachines();
     return reply.send(machines);
   });
@@ -20,7 +21,7 @@ export async function machinesRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'invalid input', issues: result.error.issues });
     }
 
-    const machine = await service.registerMachine(result.data);
-    return reply.status(201).send({ id: machine.id, hostname: machine.hostname });
+    const { machine, token } = await service.registerMachine(result.data);
+    return reply.status(201).send({ id: machine.id, hostname: machine.hostname, token });
   });
 }

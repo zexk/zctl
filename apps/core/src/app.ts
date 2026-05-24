@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import cors from '@fastify/cors';
 import { healthRoute } from './routes/health.js';
@@ -6,12 +7,37 @@ import { wsHandler } from './ws/handler.js';
 import { machinesRoutes } from './modules/machines/routes.js';
 import { execRoutes } from './modules/exec/routes.js';
 import { executionsRoutes } from './modules/executions/routes.js';
+import { verifyToken } from './lib/jwt.js';
+import type { ZctlJwtPayload } from './lib/jwt.js';
+
+const PUBLIC_PATHS = new Set(['/health', '/machines/register', '/ws']);
+
+function pathname(url: string): string {
+  const idx = url.indexOf('?');
+  return idx === -1 ? url : url.slice(0, idx);
+}
 
 export async function buildApp(opts: { logger: boolean }) {
   const app = Fastify(opts);
 
   await app.register(cors);
   await app.register(fastifyWebsocket);
+
+  app.addHook('onRequest', async (request, reply) => {
+    if (PUBLIC_PATHS.has(pathname(request.url))) return;
+
+    const auth = request.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) {
+      return reply.status(401).send({ error: 'unauthorized' });
+    }
+
+    try {
+      const payload = verifyToken(auth.slice(7));
+      (request as any).user = payload;
+    } catch {
+      return reply.status(401).send({ error: 'invalid or expired token' });
+    }
+  });
 
   app.get('/health', healthRoute);
 
@@ -25,3 +51,13 @@ export async function buildApp(opts: { logger: boolean }) {
 
   return app;
 }
+
+export function requireRole(role: ZctlJwtPayload['role']) {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = (request as any).user as ZctlJwtPayload | undefined;
+    if (!user || user.role !== role) {
+      return reply.status(403).send({ error: 'forbidden' });
+    }
+  };
+}
+

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { requireRole } from '../../app.js';
 import { executeOnMachine } from './service.js';
 
 const execBodySchema = z.object({
@@ -7,7 +8,7 @@ const execBodySchema = z.object({
 });
 
 export async function execRoutes(app: FastifyInstance) {
-  app.post('/machines/:id/exec', async (request, reply) => {
+  app.post('/machines/:id/exec', { preHandler: [requireRole('operator')] }, async (request, reply) => {
     const body = execBodySchema.safeParse(request.body);
     if (!body.success) {
       return reply.status(400).send({ error: 'invalid input', issues: body.error.issues });

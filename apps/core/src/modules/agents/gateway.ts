@@ -11,7 +11,7 @@ function send(socket: WebSocket, msg: Record<string, unknown>) {
 }
 
 function handleConnection(socket: WebSocket, request: FastifyRequest) {
-  const machineId = (request.query as { machineId?: string }).machineId;
+  const machineId = ((request.query as { machineId?: string }).machineId ?? '').trim();
   if (!machineId) {
     socket.close(4001, 'machineId required');
     return;

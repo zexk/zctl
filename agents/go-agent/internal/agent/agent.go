@@ -68,13 +68,19 @@ func (a *Agent) Run() {
 
 		log.Printf("connected to core as %s", a.machineID)
 
+		done := make(chan struct{})
 		go func() {
 			ticker := time.NewTicker(15 * time.Second)
 			defer ticker.Stop()
-			for range ticker.C {
-				msg := map[string]string{"type": "heartbeat", "machineId": a.machineID}
-				data, _ := json.Marshal(msg)
-				if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+			for {
+				select {
+				case <-ticker.C:
+					msg := map[string]string{"type": "heartbeat", "machineId": a.machineID}
+					data, _ := json.Marshal(msg)
+					if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+						return
+					}
+				case <-done:
 					return
 				}
 			}
@@ -111,6 +117,7 @@ func (a *Agent) Run() {
 				log.Printf("exec result: request=%s exit=%d", requestID, result.ExitCode)
 			}
 		}
+		close(done)
 		c.Close()
 		time.Sleep(1 * time.Second)
 	}

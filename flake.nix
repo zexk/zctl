@@ -26,6 +26,12 @@
         };
       in
       {
+        packages = {
+          zctl-agent = pkgs.callPackage ./nix/packages/zctl-agent.nix { };
+          zctl-core = pkgs.callPackage ./nix/packages/zctl-core.nix { };
+          zctl-cli = pkgs.callPackage ./nix/packages/zctl-cli.nix { };
+        };
+
         devShells.default = pkgs.devshell.mkShell {
           name = "zctl";
           packages = with pkgs; [
@@ -33,7 +39,7 @@
             gcc
             go
             nodejs_25
-            pnpm
+            pnpm_9
 
             # database client
             postgresql
@@ -65,5 +71,14 @@
           ];
         };
       }
-    );
+    )
+    // {
+      nixosModules.zctl = import ./nix/modules/zctl.nix self;
+
+      overlays.default = final: _prev: {
+        zctl-agent = self.packages.${final.system}.zctl-agent;
+        zctl-core = self.packages.${final.system}.zctl-core;
+        zctl-cli = self.packages.${final.system}.zctl-cli;
+      };
+    };
 }

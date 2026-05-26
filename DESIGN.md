@@ -11,9 +11,9 @@ The system intentionally favors simplicity over scale: a single backend, JSON-ov
 ## Architecture
 
 ```txt
-CLI (planned) → Core API/WebSocket Server ← Agents (Go)
-                      ↕
-                PostgreSQL
+CLI → Core API/WebSocket Server ← Agents (Go)
+              ↕
+          PostgreSQL
 ```
 
 ### Components
@@ -22,7 +22,7 @@ CLI (planned) → Core API/WebSocket Server ← Agents (Go)
 |---|---|---|
 | **Core** | TypeScript / Node.js | HTTP API, WebSocket gateway, connection registry, execution orchestration |
 | **Agent** | Go | Persistent WebSocket connection, command execution (`sh -c`), heartbeat reporting |
-| **CLI** | TypeScript (planned) | Operator-facing CLI |
+| **CLI** | TypeScript | Operator-facing CLI (`login`, `machines`, `exec`, `logs`) |
 
 Agents connect to the core via WebSocket and register via HTTP. The core exposes a REST API for machine management and command execution. All realtime communication flows over a single WebSocket connection per agent.
 
@@ -290,7 +290,6 @@ nix flake check                             # full flake validation
 
 In rough priority order:
 
-- **CLI** — build the Commander.js CLI with `machines`, `exec`, `logs` commands
 - **Streaming execution** — real-time stdout/stderr delivery via WebSocket
 - **TLS** — terminate HTTPS/WSS at the core or via reverse proxy
 - **RBAC** — multi-user access control

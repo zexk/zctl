@@ -5,3 +5,4 @@ dist/
 .direnv/
 agents/go-agent/agent
 record_demo.sh
+assets/demo.cast

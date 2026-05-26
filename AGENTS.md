@@ -28,16 +28,16 @@ docker compose up -d     # start postgres + core
 ## Verifying
 
 ```bash
-# all TypeScript packages
+# TypeScript — typecheck, tests, format
 pnpm typecheck
-pnpm build
+pnpm test
+pnpm format
 
 # Go agent
-cd agents/go-agent && go build ./...
-
-# both
-nix flake check
+cd agents/go-agent && go build ./... && go vet ./...
 ```
+
+CI runs both jobs on every push via GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Toolchain
 
@@ -76,6 +76,3 @@ Nix flake provides the devshell at `nix develop`.
 | `@zctl/cli` | `apps/cli/src/index.ts` | `pnpm --filter @zctl/cli dev` |
 | `go-agent` | `agents/go-agent/main.go` | `cd agents/go-agent && go run .` |
 
-## Status
-
-Project layout and devshell are set up. No app logic yet. CI not configured.

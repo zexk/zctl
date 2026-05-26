@@ -1,31 +1,29 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { readConfig, resolveConfig } from './config.js';
-import { mkdirSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { readConfig, writeConfig, resolveConfig } from './config.js';
 
-let configDir: string;
+let tempHome: string;
 
-// Patch the module's CONFIG_FILE path via env — simpler: we test the functions directly
-// by writing to a temp dir and pointing HOME at it.
 beforeEach(() => {
-  configDir = join(tmpdir(), `zctl-test-${Date.now()}`);
-  mkdirSync(configDir, { recursive: true });
-  // Unset env vars so they don't interfere
+  tempHome = join(tmpdir(), `zctl-test-${Date.now()}`);
+  mkdirSync(tempHome, { recursive: true });
+  process.env.HOME = tempHome;
   delete process.env.ZCTL_URL;
   delete process.env.ZCTL_TOKEN;
 });
 
 afterEach(() => {
-  rmSync(configDir, { recursive: true, force: true });
+  rmSync(tempHome, { recursive: true, force: true });
 });
 
 describe('resolveConfig', () => {
-  it('throws when url and token are missing', () => {
+  it('throws when url and token are absent', () => {
     expect(() => resolveConfig({})).toThrow(/No server URL/);
   });
 
-  it('throws when token is missing', () => {
+  it('throws when token is absent', () => {
     process.env.ZCTL_URL = 'http://localhost:3000';
     expect(() => resolveConfig({})).toThrow(/No token/);
   });
@@ -33,34 +31,44 @@ describe('resolveConfig', () => {
   it('prefers opts over env vars', () => {
     process.env.ZCTL_URL = 'http://env-server';
     process.env.ZCTL_TOKEN = 'env-token';
-    const config = resolveConfig({ url: 'http://opts-server', token: 'opts-token' });
-    expect(config.url).toBe('http://opts-server');
-    expect(config.token).toBe('opts-token');
+    const cfg = resolveConfig({ url: 'http://opts-server', token: 'opts-token' });
+    expect(cfg.url).toBe('http://opts-server');
+    expect(cfg.token).toBe('opts-token');
   });
 
-  it('reads from ZCTL_URL / ZCTL_TOKEN env vars', () => {
+  it('reads ZCTL_URL and ZCTL_TOKEN from env', () => {
     process.env.ZCTL_URL = 'http://localhost:3000';
-    process.env.ZCTL_TOKEN = 'my-token';
-    const config = resolveConfig({});
-    expect(config.url).toBe('http://localhost:3000');
-    expect(config.token).toBe('my-token');
+    process.env.ZCTL_TOKEN = 'env-tok';
+    const cfg = resolveConfig({});
+    expect(cfg.url).toBe('http://localhost:3000');
+    expect(cfg.token).toBe('env-tok');
   });
 });
 
-describe('readConfig / writeConfig', () => {
-  it('returns empty object when config file is absent', () => {
-    // HOME is untouched; readConfig catches ENOENT
-    const c = readConfig();
-    expect(typeof c).toBe('object');
+describe('writeConfig / readConfig', () => {
+  it('returns empty object when no config file exists', () => {
+    expect(readConfig()).toEqual({});
   });
 
-  it('round-trips url and token', () => {
-    // Write directly to the temp config file to simulate writeConfig
-    mkdirSync(join(configDir, 'zctl'), { recursive: true });
-    writeFileSync(join(configDir, 'zctl', 'config.json'), JSON.stringify({ url: 'http://x', token: 'tok' }));
-    // Can't override CONFIG_FILE path without DI; just verify JSON parse round-trips
-    const obj = JSON.parse('{"url":"http://x","token":"tok"}');
-    expect(obj.url).toBe('http://x');
-    expect(obj.token).toBe('tok');
+  it('round-trips url and token through the config file', () => {
+    writeConfig({ url: 'http://example.com', token: 'tok-abc' });
+    const cfg = readConfig();
+    expect(cfg.url).toBe('http://example.com');
+    expect(cfg.token).toBe('tok-abc');
+  });
+
+  it('merges a partial patch without clobbering existing keys', () => {
+    writeConfig({ url: 'http://example.com', token: 'old-tok' });
+    writeConfig({ token: 'new-tok' });
+    const cfg = readConfig();
+    expect(cfg.url).toBe('http://example.com');
+    expect(cfg.token).toBe('new-tok');
+  });
+
+  it('resolveConfig falls back to saved config', () => {
+    writeConfig({ url: 'http://file-server', token: 'file-tok' });
+    const cfg = resolveConfig({});
+    expect(cfg.url).toBe('http://file-server');
+    expect(cfg.token).toBe('file-tok');
   });
 });

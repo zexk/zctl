@@ -1,26 +1,26 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { homedir } from 'os';
+import * as os from 'os';
 import { join } from 'path';
-
-const CONFIG_DIR = join(homedir(), '.config', 'zctl');
-const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
 export interface Config {
   url: string;
   token: string;
 }
 
+function configDir() { return join(os.homedir(), '.config', 'zctl'); }
+function configFile() { return join(configDir(), 'config.json'); }
+
 export function readConfig(): Partial<Config> {
   try {
-    return JSON.parse(readFileSync(CONFIG_FILE, 'utf8'));
+    return JSON.parse(readFileSync(configFile(), 'utf8'));
   } catch {
     return {};
   }
 }
 
 export function writeConfig(patch: Partial<Config>): void {
-  mkdirSync(CONFIG_DIR, { recursive: true });
-  writeFileSync(CONFIG_FILE, JSON.stringify({ ...readConfig(), ...patch }, null, 2));
+  mkdirSync(configDir(), { recursive: true });
+  writeFileSync(configFile(), JSON.stringify({ ...readConfig(), ...patch }, null, 2));
 }
 
 export function resolveConfig(opts: { url?: string; token?: string }): Config {

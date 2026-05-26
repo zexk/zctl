@@ -281,13 +281,13 @@ cd agents/go-agent && go build ./...
 
 The flake exposes three outputs consumed by NixOS:
 
-| Output | Description |
-| --- | --- |
-| `packages.<system>.zctl-agent` | Go binary via `buildGoModule` |
-| `packages.<system>.zctl-core` | TypeScript server, esbuild-bundled (ESM) |
-| `packages.<system>.zctl-cli` | Operator CLI, esbuild-bundled (CJS) |
-| `nixosModules.zctl` | Single NixOS module covering all three |
-| `overlays.default` | Injects the three packages into `pkgs` |
+| Output                         | Description                              |
+| ------------------------------ | ---------------------------------------- |
+| `packages.<system>.zctl-agent` | Go binary via `buildGoModule`            |
+| `packages.<system>.zctl-core`  | TypeScript server, esbuild-bundled (ESM) |
+| `packages.<system>.zctl-cli`   | Operator CLI, esbuild-bundled (CJS)      |
+| `nixosModules.zctl`            | Single NixOS module covering all three   |
+| `overlays.default`             | Injects the three packages into `pkgs`   |
 
 ### Build strategy for TypeScript components
 

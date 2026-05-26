@@ -261,7 +261,7 @@ pnpm --filter @zctl/core dev
 | ------------- | ------- | --------------- |
 | Go            | 1.26    | agent           |
 | Node.js       | 25      | core + CLI      |
-| pnpm          | 10      | package manager |
+| pnpm          | 9       | package manager |
 | PostgreSQL    | 17      | database        |
 | golangci-lint | 2.x     | Go linting      |
 | prettier      | 3.x     | formatting      |
@@ -277,10 +277,43 @@ cd agents/go-agent && go build ./...
 
 ---
 
+## Packaging
+
+The flake exposes three outputs consumed by NixOS:
+
+| Output | Description |
+| --- | --- |
+| `packages.<system>.zctl-agent` | Go binary via `buildGoModule` |
+| `packages.<system>.zctl-core` | TypeScript server, esbuild-bundled (ESM) |
+| `packages.<system>.zctl-cli` | Operator CLI, esbuild-bundled (CJS) |
+| `nixosModules.zctl` | Single NixOS module covering all three |
+| `overlays.default` | Injects the three packages into `pkgs` |
+
+### Build strategy for TypeScript components
+
+The workspace uses pnpm 9. Dependencies are fetched offline via `fetchPnpmDeps` + `pnpmConfigHook`. The workspace packages (`@zctl/config`, `@zctl/shared`, `@zctl/protocol`) are compiled first with tsc so their `dist/` is present before bundling.
+
+esbuild then bundles each entrypoint into a single file with no `node_modules` at runtime. The CLI targets CJS because `commander` (v14) uses dynamic `require()` for Node builtins, which breaks under esbuild's ESM output. The core targets ESM because it uses top-level `await`, which CJS cannot represent.
+
+### Migrations
+
+`apps/core/src/migrate.ts` runs migrations programmatically via `drizzle-orm/postgres-js/migrator` — no `drizzle-kit` at runtime. It is bundled into `zctl-core-migrate` and wired as `ExecStartPre` in the systemd unit so migrations run on every deployment before the server starts.
+
+The migrations folder path is injected at package build time via `makeWrapper --set MIGRATIONS_FOLDER` pointing into the Nix store.
+
+### NixOS module
+
+One module covers the full stack:
+
+- `services.zctl.core` — systemd unit for the control plane; `ExecStartPre` runs migrations; secrets via `environmentFile`
+- `services.zctl.agents.<name>` — attrset; each entry becomes a `zctl-agent-<name>` unit; supports multiple control-plane registrations from one host
+- `programs.zctl` — adds the CLI to `environment.systemPackages`
+
+---
+
 ## Future Work
 
 - **Streaming execution** - real-time stdout/stderr over WebSocket
 - **TLS** - HTTPS/WSS termination at core or via reverse proxy
 - **RBAC** - multi-user access control
-- **Agent deployment** - install scripts, systemd units
 - **Structured logging** - replace `log.Printf` in the Go agent

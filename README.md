@@ -1,6 +1,6 @@
 # zctl
 
-Run commands on remote machines over WebSocket. Agents connect out to a central backend; the CLI dispatches from the other end. No inbound firewall rules, no key distribution.
+Run commands on remote machines over WebSocket. Agents connect out to a central backend; the CLI dispatches from the other end. Managed machines need no inbound firewall rules and no key distribution.
 
 ![demo](./assets/demo.gif)
 
@@ -22,17 +22,30 @@ zctl login --url http://localhost:3000 --token $OP_TOKEN
 
 ```bash
 zctl machines
-# HOSTNAME                 STATUS    OS         ARCH       LAST SEEN
-# ──────────────────────────────────────────────────────────────────────
-# docker-agent             online    linux      aarch64    3s ago
+```
 
+```
+HOSTNAME                 STATUS    OS         ARCH       LAST SEEN
+──────────────────────────────────────────────────────────────────────
+docker-agent             online    linux      aarch64    3s ago
+```
+
+```bash
 zctl exec docker-agent uptime
-# 10:42:01 up 2 min, 0 users, load average: 0.00, 0.00, 0.00
+```
 
+```
+10:42:01 up 2 min, 0 users, load average: 0.00, 0.00, 0.00
+```
+
+```bash
 zctl logs docker-agent
-# COMMAND                          STATUS     EXIT   CREATED
-# ────────────────────────────────────────────────────────────────────────
-# uptime                           completed  0      5/26/2025, 10:42:01 AM
+```
+
+```
+COMMAND                          STATUS     EXIT   CREATED
+────────────────────────────────────────────────────────────────────────
+uptime                           completed  0      5/26/2025, 10:42:01 AM
 ```
 
 ## Features

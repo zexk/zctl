@@ -57,6 +57,54 @@ CLI --> Core API/WS Server <-- Agents (Go)
 | Agent     | Go, gorilla/websocket                    | Outbound WS connection, command execution, heartbeats |
 | CLI       | TypeScript, Commander.js                 | Operator CLI                                          |
 
+## NixOS installation
+
+Add the flake input and import the module:
+
+```nix
+inputs.zctl.url = "github:zexk/zctl";
+```
+
+```nix
+imports = [ inputs.zctl.nixosModules.zctl ];
+```
+
+**Control plane** (one host, needs PostgreSQL):
+
+```nix
+services.zctl.core = {
+  enable = true;
+  environmentFile = "/run/secrets/zctl-env"; # must contain JWT_SECRET=<32+ chars>
+  database.url = "postgres://zctl:password@localhost:5432/zctl";
+  openFirewall = true;
+};
+```
+
+**Agents** (any managed host):
+
+```nix
+services.zctl.agents.default = {
+  enable = true;
+  coreUrl = "https://zctl.example.com";
+};
+```
+
+Multiple agents per host (e.g. reaching different control planes) are supported via additional attrset keys — each becomes a separate systemd unit (`zctl-agent-<name>`).
+
+**CLI** (operator machines):
+
+```nix
+programs.zctl.enable = true;
+```
+
+Then authenticate:
+
+```bash
+zctl login --url https://zctl.example.com --token <operator-jwt>
+```
+
+The flake also exposes `packages.<system>.{zctl-agent,zctl-core,zctl-cli}` and `overlays.default` for use outside NixOS.
+
 ## Development
 
 ```bash

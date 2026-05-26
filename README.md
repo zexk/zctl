@@ -12,39 +12,39 @@ cd zctl
 docker compose up --build -d
 ```
 
-```bash
-# Register an agent (public endpoint, returns a JWT token)
-curl -s -X POST http://localhost:3000/machines/register \
-  -H "Content-Type: application/json" \
-  -d '{"hostname":"my-agent","os":"linux","arch":"x86_64"}'
-```
-
-```json
-{ "id": "uuid", "hostname": "my-agent", "token": "eyJ..." }
-```
+The stack registers a `docker-agent` automatically. Build the CLI and connect:
 
 ```bash
-# Generate an operator token (replace the secret with your JWT_SECRET)
-OP_TOKEN=$(node -e "console.log(require('jsonwebtoken').sign({sub:'admin',role:'operator'},'dev-secret-change-in-production-1',{expiresIn:'90d'}))")
+pnpm --filter @zctl/cli build
 
-# List machines
-curl -H "Authorization: Bearer $OP_TOKEN" http://localhost:3000/machines
-```
+# Generate an operator token
+OP_TOKEN=$(node --input-type=commonjs <<'EOF'
+const { createHmac } = require('node:crypto');
+const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production-1';
+const h = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+const n = Math.floor(Date.now()/1000);
+const p = Buffer.from(JSON.stringify({sub:'admin',role:'operator',iat:n,exp:n+86400})).toString('base64url');
+const s = createHmac('sha256',secret).update(h+'.'+p).digest('base64url');
+process.stdout.write(h+'.'+p+'.'+s);
+EOF
+)
 
-```json
-[{ "hostname": "docker-agent", "status": "online" }]
+zctl login --url http://localhost:3000 --token $OP_TOKEN
 ```
 
 ```bash
-# Execute a command on a machine
-curl -X POST http://localhost:3000/machines/docker-agent/exec \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $OP_TOKEN" \
-  -d '{"command":"uptime"}'
-```
+zctl machines
+# HOSTNAME                 STATUS    OS         ARCH       LAST SEEN
+# ──────────────────────────────────────────────────────────────────────
+# docker-agent             online    linux      aarch64    3s ago
 
-```json
-{ "stdout": "up 1 hour", "stderr": "", "exitCode": 0 }
+zctl exec docker-agent uptime
+# 10:42:01 up 2 min, 0 users, load average: 0.00, 0.00, 0.00
+
+zctl logs docker-agent
+# COMMAND                          STATUS     EXIT   CREATED
+# ────────────────────────────────────────────────────────────────────────
+# uptime                           completed  0      5/26/2025, 10:42:01 AM
 ```
 
 ## Capabilities
@@ -67,7 +67,7 @@ CLI --> Core API/WS Server <-- Agents (Go)
 |---|---|---|
 | Core | TypeScript, Fastify, Drizzle, PostgreSQL | HTTP API, WebSocket gateway, connection registry, JWT auth |
 | Agent | Go, gorilla/websocket | Persistent WS connection, command execution, heartbeats |
-| CLI | TypeScript, Commander.js (planned) | Operator-facing CLI |
+| CLI | TypeScript, Commander.js | Operator-facing CLI |
 
 ## Development
 
@@ -90,7 +90,8 @@ cd agents/go-agent && go build ./...
 
 ```text
 apps/
-└── core/              Backend API and WebSocket server
+├── core/              Backend API and WebSocket server
+└── cli/               Operator-facing CLI
 
 agents/
 └── go-agent/          Go agent binary
@@ -103,4 +104,4 @@ packages/
 
 ## Status
 
-Core and agent are functional. JWT-based authentication is wired in. CLI and streaming execution are planned.
+Core, agent, and CLI are functional. JWT-based authentication is wired in. Streaming execution is planned.

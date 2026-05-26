@@ -36,7 +36,9 @@ program
     }
 
     const pad = (s: string | null | undefined, w: number) => (s ?? '-').padEnd(w);
-    console.log(`${'HOSTNAME'.padEnd(24)} ${'STATUS'.padEnd(9)} ${'OS'.padEnd(10)} ${'ARCH'.padEnd(10)} LAST SEEN`);
+    console.log(
+      `${'HOSTNAME'.padEnd(24)} ${'STATUS'.padEnd(9)} ${'OS'.padEnd(10)} ${'ARCH'.padEnd(10)} LAST SEEN`,
+    );
     console.log('─'.repeat(70));
     for (const m of machines) {
       console.log(
@@ -87,7 +89,7 @@ program
   });
 
 program.parseAsync().catch((err: unknown) => {
-  console.error((err instanceof Error ? err.message : String(err)));
+  console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 });
 

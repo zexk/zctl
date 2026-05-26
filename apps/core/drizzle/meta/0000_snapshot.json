@@ -54,9 +54,7 @@
         "machines_hostname_unique": {
           "name": "machines_hostname_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "hostname"
-          ]
+          "columns": ["hostname"]
         }
       },
       "policies": {},

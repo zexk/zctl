@@ -6,11 +6,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: zctl
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 3s
       timeout: 3s
       retries: 10
@@ -20,12 +20,12 @@ services:
       context: .
       dockerfile: apps/core/Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/zctl
-      PORT: "3000"
-      HOST: "0.0.0.0"
-      JWT_SECRET: "${JWT_SECRET:-dev-secret-change-in-production-1}"
+      PORT: '3000'
+      HOST: '0.0.0.0'
+      JWT_SECRET: '${JWT_SECRET:-dev-secret-change-in-production-1}'
     depends_on:
       postgres:
         condition: service_healthy

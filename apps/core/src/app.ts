@@ -60,4 +60,3 @@ export function requireRole(role: ZctlJwtPayload['role']) {
     }
   };
 }
-

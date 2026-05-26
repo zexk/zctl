@@ -2,11 +2,25 @@ import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 vi.mock('./modules/machines/repository.js', () => ({
   findAll: vi.fn().mockResolvedValue([
-    { id: 'uuid-1', hostname: 'machine-a', os: 'linux', arch: 'x86_64', lastSeen: null, createdAt: new Date() },
+    {
+      id: 'uuid-1',
+      hostname: 'machine-a',
+      os: 'linux',
+      arch: 'x86_64',
+      lastSeen: null,
+      createdAt: new Date(),
+    },
   ]),
   findByHostname: vi.fn().mockImplementation(async (hostname: string) => {
     if (hostname === 'existing') {
-      return { id: 'uuid-1', hostname: 'existing', os: 'linux', arch: 'x86_64', lastSeen: null, createdAt: new Date() };
+      return {
+        id: 'uuid-1',
+        hostname: 'existing',
+        os: 'linux',
+        arch: 'x86_64',
+        lastSeen: null,
+        createdAt: new Date(),
+      };
     }
     return undefined;
   }),
@@ -17,7 +31,12 @@ vi.mock('./modules/machines/repository.js', () => ({
     createdAt: new Date(),
   })),
   updateLastSeen: vi.fn().mockImplementation(async (id: string) => ({
-    id, hostname: 'existing', os: 'linux', arch: 'x86_64', lastSeen: new Date(), createdAt: new Date(),
+    id,
+    hostname: 'existing',
+    os: 'linux',
+    arch: 'x86_64',
+    lastSeen: new Date(),
+    createdAt: new Date(),
   })),
   touchByHostname: vi.fn().mockResolvedValue(undefined),
 }));

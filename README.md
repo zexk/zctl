@@ -51,11 +51,11 @@ CLI --> Core API/WS Server <-- Agents (Go)
             PostgreSQL
 ```
 
-| Component | Stack | Role |
-|---|---|---|
-| Core | TypeScript, Fastify, Drizzle, PostgreSQL | HTTP API, WebSocket gateway, JWT auth |
-| Agent | Go, gorilla/websocket | Outbound WS connection, command execution, heartbeats |
-| CLI | TypeScript, Commander.js | Operator CLI |
+| Component | Stack                                    | Role                                                  |
+| --------- | ---------------------------------------- | ----------------------------------------------------- |
+| Core      | TypeScript, Fastify, Drizzle, PostgreSQL | HTTP API, WebSocket gateway, JWT auth                 |
+| Agent     | Go, gorilla/websocket                    | Outbound WS connection, command execution, heartbeats |
+| CLI       | TypeScript, Commander.js                 | Operator CLI                                          |
 
 ## Development
 

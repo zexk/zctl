@@ -28,7 +28,12 @@ export interface Execution {
   completedAt: string | null;
 }
 
-async function request<T>(config: Config, method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(
+  config: Config,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
   const res = await fetch(`${config.url}${path}`, {
     method,
     headers: {

@@ -28,10 +28,7 @@ import { pendingExecs } from '../exec/pending.js';
 import { touchByHostname } from '../machines/repository.js';
 import { signToken } from '../../lib/jwt.js';
 
-const agentToken = signToken(
-  { sub: 'uuid-1', role: 'agent', hostname: 'test-host' },
-  '1h',
-);
+const agentToken = signToken({ sub: 'uuid-1', role: 'agent', hostname: 'test-host' }, '1h');
 
 function mockSocket(): WebSocket & { _emit(event: string, ...args: any[]): void } {
   const handlers: Record<string, (...args: any[]) => void> = {};
@@ -135,8 +132,17 @@ describe('handleConnection', () => {
     const socket = mockSocket();
     handleConnection(socket, mockRequest('test-host'));
     sendJson(socket, { type: 'auth', token: agentToken });
-    sendJson(socket, { type: 'exec_result', requestId: 'req-1', exitCode: 0, stdout: '', stderr: '' });
-    expect(pendingExecs.resolve).toHaveBeenCalledWith('req-1', expect.objectContaining({ requestId: 'req-1' }));
+    sendJson(socket, {
+      type: 'exec_result',
+      requestId: 'req-1',
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+    });
+    expect(pendingExecs.resolve).toHaveBeenCalledWith(
+      'req-1',
+      expect.objectContaining({ requestId: 'req-1' }),
+    );
   });
 
   it('does not process messages before auth', () => {

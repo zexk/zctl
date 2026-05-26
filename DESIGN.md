@@ -16,11 +16,11 @@ CLI -> Core API/WebSocket Server <- Agents (Go)
 
 ### Components
 
-| Component | Language | Role |
-|---|---|---|
-| **Core** | TypeScript / Node.js | HTTP API, WebSocket gateway, connection registry, execution orchestration |
-| **Agent** | Go | Outbound WS connection, command execution (`sh -c`), heartbeat reporting |
-| **CLI** | TypeScript | Operator CLI (`login`, `machines`, `exec`, `logs`) |
+| Component | Language             | Role                                                                      |
+| --------- | -------------------- | ------------------------------------------------------------------------- |
+| **Core**  | TypeScript / Node.js | HTTP API, WebSocket gateway, connection registry, execution orchestration |
+| **Agent** | Go                   | Outbound WS connection, command execution (`sh -c`), heartbeat reporting  |
+| **CLI**   | TypeScript           | Operator CLI (`login`, `machines`, `exec`, `logs`)                        |
 
 Agents connect to the core via WebSocket and register via HTTP. All realtime communication flows over a single WebSocket connection per agent.
 
@@ -189,11 +189,11 @@ HTTP 200 { stdout, stderr, exitCode }
 
 ### Error paths
 
-| Scenario | Behavior |
-|---|---|
-| Machine not registered | 404 |
-| Machine not connected | 502 |
-| Agent crashes mid-exec | 10s timeout, row marked `timeout` |
+| Scenario               | Behavior                                    |
+| ---------------------- | ------------------------------------------- |
+| Machine not registered | 404                                         |
+| Machine not connected  | 502                                         |
+| Agent crashes mid-exec | 10s timeout, row marked `timeout`           |
 | Core restarts mid-exec | `pendingExecs.rejectAll()` in shutdown hook |
 
 ---
@@ -257,15 +257,15 @@ pnpm --filter @zctl/core dev
 
 ### Toolchain
 
-| Tool | Version | Notes |
-|---|---|---|
-| Go | 1.26 | agent |
-| Node.js | 25 | core + CLI |
-| pnpm | 10 | package manager |
-| PostgreSQL | 17 | database |
-| golangci-lint | 2.x | Go linting |
-| prettier | 3.x | formatting |
-| eslint | 10.x | JS linting |
+| Tool          | Version | Notes           |
+| ------------- | ------- | --------------- |
+| Go            | 1.26    | agent           |
+| Node.js       | 25      | core + CLI      |
+| pnpm          | 10      | package manager |
+| PostgreSQL    | 17      | database        |
+| golangci-lint | 2.x     | Go linting      |
+| prettier      | 3.x     | formatting      |
+| eslint        | 10.x    | JS linting      |
 
 ### Verification
 

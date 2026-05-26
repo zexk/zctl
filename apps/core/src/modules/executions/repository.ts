@@ -3,14 +3,8 @@ import { db } from '../../db/client.js';
 import { commandExecutions } from '../../db/schema/executions.js';
 import type { CommandExecution } from '../../db/schema/executions.js';
 
-export async function create(
-  machineId: string,
-  command: string,
-): Promise<CommandExecution> {
-  const rows = await db
-    .insert(commandExecutions)
-    .values({ machineId, command })
-    .returning();
+export async function create(machineId: string, command: string): Promise<CommandExecution> {
+  const rows = await db.insert(commandExecutions).values({ machineId, command }).returning();
   return rows[0];
 }
 

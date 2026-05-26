@@ -6,9 +6,7 @@ const OFFLINE_THRESHOLD_MS = 30_000;
 
 function computeStatus(lastSeen: Date | null): 'online' | 'offline' {
   if (!lastSeen) return 'offline';
-  return Date.now() - new Date(lastSeen).getTime() < OFFLINE_THRESHOLD_MS
-    ? 'online'
-    : 'offline';
+  return Date.now() - new Date(lastSeen).getTime() < OFFLINE_THRESHOLD_MS ? 'online' : 'offline';
 }
 
 export async function listMachines() {

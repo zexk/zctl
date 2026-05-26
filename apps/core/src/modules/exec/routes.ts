@@ -8,20 +8,24 @@ const execBodySchema = z.object({
 });
 
 export async function execRoutes(app: FastifyInstance) {
-  app.post('/machines/:id/exec', { preHandler: [requireRole('operator')] }, async (request, reply) => {
-    const body = execBodySchema.safeParse(request.body);
-    if (!body.success) {
-      return reply.status(400).send({ error: 'invalid input', issues: body.error.issues });
-    }
+  app.post(
+    '/machines/:id/exec',
+    { preHandler: [requireRole('operator')] },
+    async (request, reply) => {
+      const body = execBodySchema.safeParse(request.body);
+      if (!body.success) {
+        return reply.status(400).send({ error: 'invalid input', issues: body.error.issues });
+      }
 
-    const { id } = request.params as { id: string };
+      const { id } = request.params as { id: string };
 
-    try {
-      const result = await executeOnMachine(id, body.data.command);
-      return reply.send(result);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'execution failed';
-      return reply.status(502).send({ error: message });
-    }
-  });
+      try {
+        const result = await executeOnMachine(id, body.data.command);
+        return reply.send(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'execution failed';
+        return reply.status(502).send({ error: message });
+      }
+    },
+  );
 }

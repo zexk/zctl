@@ -7,8 +7,12 @@ export interface Config {
   token: string;
 }
 
-function configDir() { return join(os.homedir(), '.config', 'zctl'); }
-function configFile() { return join(configDir(), 'config.json'); }
+function configDir() {
+  return join(os.homedir(), '.config', 'zctl');
+}
+function configFile() {
+  return join(configDir(), 'config.json');
+}
 
 export function readConfig(): Partial<Config> {
   try {

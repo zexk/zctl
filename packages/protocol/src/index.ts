@@ -31,9 +31,11 @@ export const ExecResultSchema = z.object({
   stderr: z.string(),
 });
 
-export const AuthOkSchema = z.object({
-  type: z.literal('auth_ok'),
-}).strict();
+export const AuthOkSchema = z
+  .object({
+    type: z.literal('auth_ok'),
+  })
+  .strict();
 
 export const AuthErrorSchema = z.object({
   type: z.literal('auth_error'),

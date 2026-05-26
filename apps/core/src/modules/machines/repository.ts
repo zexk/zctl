@@ -32,8 +32,5 @@ export async function updateLastSeen(id: string): Promise<Machine> {
 }
 
 export async function touchByHostname(hostname: string): Promise<void> {
-  await db
-    .update(machines)
-    .set({ lastSeen: new Date() })
-    .where(eq(machines.hostname, hostname));
+  await db.update(machines).set({ lastSeen: new Date() }).where(eq(machines.hostname, hostname));
 }

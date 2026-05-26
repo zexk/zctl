@@ -4,6 +4,10 @@ let
   core = config.services.zctl.core;
   agents = config.services.zctl.agents;
   cli = config.programs.zctl;
+
+  # Unix socket peer-auth URL — no password needed, user must match PG role.
+  localDbUrl = "postgres://${core.user}@/${core.database.name}?host=/run/postgresql";
+  effectiveDbUrl = if core.database.createLocally then localDbUrl else core.database.url;
 in
 {
   options = {
@@ -29,10 +33,28 @@ in
         description = "Address the server binds to.";
       };
 
+      database.createLocally = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Create a local PostgreSQL database automatically.
+          The database is accessed via Unix socket peer authentication — no password required.
+        '';
+      };
+
+      database.name = lib.mkOption {
+        type = lib.types.str;
+        default = "zctl";
+        description = "Database name. Only used when createLocally = true.";
+      };
+
       database.url = lib.mkOption {
         type = lib.types.str;
-        default = "postgres://postgres:postgres@localhost:5432/zctl";
-        description = "PostgreSQL connection URL. For credentials, prefer environmentFile.";
+        default = "";
+        description = ''
+          PostgreSQL connection URL. Required when createLocally = false.
+          Ignored when createLocally = true (the URL is derived from the local socket).
+        '';
       };
 
       jwtExpiryAgent = lib.mkOption {
@@ -73,7 +95,7 @@ in
       user = lib.mkOption {
         type = lib.types.str;
         default = "zctl-core";
-        description = "System user the service runs as.";
+        description = "System user the service runs as. Also used as the PostgreSQL role when createLocally = true.";
       };
 
       group = lib.mkOption {
@@ -133,21 +155,36 @@ in
 
   config = lib.mkMerge [
     (lib.mkIf core.enable {
+      assertions = [{
+        assertion = core.database.createLocally || core.database.url != "";
+        message = "services.zctl.core.database.url must be set when database.createLocally = false.";
+      }];
+
       users.users.${core.user} = {
         isSystemUser = true;
         group = core.group;
       };
       users.groups.${core.group} = { };
 
+      services.postgresql = lib.mkIf core.database.createLocally {
+        enable = true;
+        ensureDatabases = [ core.database.name ];
+        ensureUsers = [{
+          name = core.user;
+          ensureDBOwnership = true;
+        }];
+      };
+
       systemd.services.zctl-core = {
         description = "zctl core server";
-        after = [ "network.target" "postgresql.service" ];
+        after = [ "network.target" ] ++ lib.optional core.database.createLocally "postgresql.service";
+        requires = lib.optional core.database.createLocally "postgresql.service";
         wantedBy = [ "multi-user.target" ];
 
         environment = {
           PORT = toString core.port;
           HOST = core.host;
-          DATABASE_URL = core.database.url;
+          DATABASE_URL = effectiveDbUrl;
           JWT_EXPIRY_AGENT = core.jwtExpiryAgent;
           JWT_EXPIRY_OPERATOR = core.jwtExpiryOperator;
           EXEC_TIMEOUT_MS = toString core.execTimeoutMs;

@@ -19,7 +19,7 @@ func Load() Config {
 
 	wsURL := os.Getenv("WS_URL")
 	if wsURL == "" {
-		wsURL = strings.Replace(coreURL, "http://", "ws://", 1) + "/ws"
+		wsURL = strings.NewReplacer("https://", "wss://", "http://", "ws://").Replace(coreURL) + "/ws"
 	}
 
 	hostname := os.Getenv("HOSTNAME")

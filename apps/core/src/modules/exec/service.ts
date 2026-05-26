@@ -15,11 +15,8 @@ export async function executeOnMachine(hostname: string, command: string) {
   const execution = await executions.createExecution(machine.id, command);
   const requestId = crypto.randomUUID();
 
-  conn.socket.send(
-    JSON.stringify({ type: 'exec', requestId, command }),
-  );
-
   try {
+    conn.socket.send(JSON.stringify({ type: 'exec', requestId, command }));
     const result = await pendingExecs.add(requestId, EXEC_TIMEOUT);
     await executions.completeExecution(execution.id, result);
     return result;

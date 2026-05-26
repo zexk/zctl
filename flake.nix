@@ -57,6 +57,11 @@
             httpie
             htop
             iperf
+
+            # demo recording
+            asciinema
+            asciinema-agg
+            pv
           ];
         };
       }

@@ -25,7 +25,7 @@ curl -s -X POST http://localhost:3000/machines/register \
 
 ```bash
 # Generate an operator token (replace the secret with your JWT_SECRET)
-OP_TOKEN=$(node -e "console.log(require('jsonwebtoken').sign({sub:'admin',role:'operator'},'dev-secret-change-in-production',{expiresIn:'90d'}))")
+OP_TOKEN=$(node -e "console.log(require('jsonwebtoken').sign({sub:'admin',role:'operator'},'dev-secret-change-in-production-1',{expiresIn:'90d'}))")
 
 # List machines
 curl -H "Authorization: Bearer $OP_TOKEN" http://localhost:3000/machines

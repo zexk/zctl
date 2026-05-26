@@ -309,6 +309,16 @@ One module covers the full stack:
 - `services.zctl.agents.<name>` — attrset; each entry becomes a `zctl-agent-<name>` unit; supports multiple control-plane registrations from one host
 - `programs.zctl` — adds the CLI to `environment.systemPackages`
 
+#### Database provisioning
+
+`database.createLocally = true` (default) wires up PostgreSQL automatically:
+
+1. Enables `services.postgresql` and creates the database and role via `ensureDatabases` / `ensureUsers`.
+2. Sets `DATABASE_URL` to a Unix socket URL (`postgres://<user>@/<db>?host=/run/postgresql`). The service user and PostgreSQL role share the same name, so peer authentication applies — no password is stored or needed.
+3. Adds `requires = ["postgresql.service"]` to enforce startup ordering.
+
+Set `database.createLocally = false` and provide `database.url` to use an external database. An assertion fails at evaluation time if the URL is missing.
+
 ---
 
 ## Future Work

@@ -69,15 +69,21 @@ inputs.zctl.url = "github:zexk/zctl";
 imports = [ inputs.zctl.nixosModules.zctl ];
 ```
 
-**Control plane** (one host, needs PostgreSQL):
+**Control plane** (one host):
 
 ```nix
 services.zctl.core = {
   enable = true;
   environmentFile = "/run/secrets/zctl-env"; # must contain JWT_SECRET=<32+ chars>
-  database.url = "postgres://zctl:password@localhost:5432/zctl";
   openFirewall = true;
 };
+```
+
+PostgreSQL is provisioned automatically (`database.createLocally = true` by default): a local database and role are created, and the service connects via Unix socket peer auth — no password required. To use an external database instead:
+
+```nix
+services.zctl.core.database.createLocally = false;
+services.zctl.core.database.url = "postgres://user:pass@host/zctl";
 ```
 
 **Agents** (any managed host):

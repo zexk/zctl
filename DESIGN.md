@@ -2,18 +2,16 @@
 
 ## Overview
 
-zctl is a lightweight self-hosted remote machine orchestration platform. It provides persistent connectivity to remote machines, remote command execution, heartbeat monitoring, and execution history — without the complexity of Kubernetes or Ansible.
-
-The system intentionally favors simplicity over scale: a single backend, JSON-over-WebSocket protocol, in-memory connection state, and synchronous command execution.
+zctl runs commands on remote machines over a persistent WebSocket. The scope is intentionally narrow: one backend, Go agents, no orchestration layer. It's closer to a thin SSH replacement for scripted use cases than to Ansible or Kubernetes.
 
 ---
 
 ## Architecture
 
 ```txt
-CLI → Core API/WebSocket Server ← Agents (Go)
-              ↕
-          PostgreSQL
+CLI -> Core API/WebSocket Server <- Agents (Go)
+                 |
+             PostgreSQL
 ```
 
 ### Components
@@ -21,10 +19,10 @@ CLI → Core API/WebSocket Server ← Agents (Go)
 | Component | Language | Role |
 |---|---|---|
 | **Core** | TypeScript / Node.js | HTTP API, WebSocket gateway, connection registry, execution orchestration |
-| **Agent** | Go | Persistent WebSocket connection, command execution (`sh -c`), heartbeat reporting |
-| **CLI** | TypeScript | Operator-facing CLI (`login`, `machines`, `exec`, `logs`) |
+| **Agent** | Go | Outbound WS connection, command execution (`sh -c`), heartbeat reporting |
+| **CLI** | TypeScript | Operator CLI (`login`, `machines`, `exec`, `logs`) |
 
-Agents connect to the core via WebSocket and register via HTTP. The core exposes a REST API for machine management and command execution. All realtime communication flows over a single WebSocket connection per agent.
+Agents connect to the core via WebSocket and register via HTTP. All realtime communication flows over a single WebSocket connection per agent.
 
 ---
 
@@ -38,118 +36,118 @@ Agents connect to the core via WebSocket and register via HTTP. The core exposes
 
 ```
 src/
-├── config/env.ts           — validated env loading (dotenv + Zod)
+├── config/env.ts           # env loading (dotenv + Zod)
 ├── db/
-│   ├── client.ts           — Drizzle + postgres connection
+│   ├── client.ts           # Drizzle + postgres connection
 │   └── schema/
-│       ├── machines.ts     — machines table
-│       └── executions.ts   — command_executions table
+│       ├── machines.ts     # machines table
+│       └── executions.ts   # command_executions table
 ├── modules/
 │   ├── agents/
-│   │   ├── gateway.ts      — WebSocket message router
-│   │   ├── registry.ts     — in-memory Map<hostname, WebSocket>
+│   │   ├── gateway.ts      # WebSocket message router
+│   │   ├── registry.ts     # in-memory Map<hostname, WebSocket>
 │   │   └── types.ts
 │   ├── machines/
-│   │   ├── repository.ts   — DB access for machines
-│   │   ├── service.ts      — business logic + status computation
-│   │   └── routes.ts       — GET /machines, POST /machines/register
+│   │   ├── repository.ts   # DB access for machines
+│   │   ├── service.ts      # business logic + status computation
+│   │   └── routes.ts       # GET /machines, POST /machines/register
 │   ├── exec/
-│   │   ├── service.ts      — orchestrates command execution
-│   │   ├── pending.ts      — async pending request tracker
-│   │   ├── routes.ts       — POST /machines/:id/exec
+│   │   ├── service.ts      # command dispatch
+│   │   ├── pending.ts      # async request tracker
+│   │   ├── routes.ts       # POST /machines/:id/exec
 │   │   └── types.ts
 │   └── executions/
-│       ├── repository.ts   — DB access for command_executions
-│       ├── service.ts      — execution lifecycle
-│       └── routes.ts       — GET /machines/:id/executions
+│       ├── repository.ts   # DB access for command_executions
+│       ├── service.ts      # execution lifecycle
+│       └── routes.ts       # GET /machines/:id/executions
 ├── routes/health.ts
 ├── ws/handler.ts
-├── app.ts                  — Fastify factory (no listening)
-├── server.ts               — startup, DB verify, shutdown hooks
-└── index.ts                — entry: import { startServer }; await startServer()
+├── app.ts                  # Fastify factory (no listen() call)
+├── server.ts               # startup ordering, shutdown hooks
+└── index.ts
 ```
 
-Key design decisions:
+Notes:
 
-- **app.ts** is a pure factory. It creates and configures Fastify but never calls `listen()`. This makes testing and lifecycle management clean.
-- **server.ts** owns startup ordering: validate env → connect DB → build app → register shutdown hooks → listen. It also holds `pendingExecs.rejectAll()` and `agentRegistry.closeAll()` during shutdown.
-- **`@fastify/websocket`** provides the WebSocket plugin. Routes using WebSocket are registered inside `app.register()` scopes.
+- `app.ts` is a pure factory - no `listen()`. Keeps test setup and shutdown hooks independent of the server lifecycle.
+- `server.ts` owns startup: validate env -> connect DB -> build app -> register shutdown hooks -> listen. Calls `pendingExecs.rejectAll()` and `agentRegistry.closeAll()` on shutdown.
+- WebSocket routes are registered inside `app.register()` scopes via `@fastify/websocket`.
 
 ### Agent (`agents/go-agent`)
 
 **Stack:** Go 1.26, gorilla/websocket, standard library
 
 ```
-cmd/agent/main.go           — entry: register HTTP → connect WS → block on signal
+cmd/agent/main.go           # entry: register HTTP -> connect WS -> block on signal
 internal/
-├── agent/agent.go          — WS connect loop, read loop, heartbeat ticker
-├── api/client.go           — HTTP client for /machines/register
-├── config/config.go        — env loading (CORE_URL, HOSTNAME)
-├── exec/exec.go            — exec.Command("sh", "-c", ...) runner
-└── machine/info.go         — collects hostname, GOOS, GOARCH
+├── agent/agent.go          # WS connect loop, read loop, heartbeat ticker
+├── api/client.go           # HTTP client for /machines/register
+├── config/config.go        # env loading (CORE_URL, HOSTNAME)
+├── exec/exec.go            # exec.Command("sh", "-c", ...) runner
+└── machine/info.go         # collects hostname, GOOS, GOARCH
 ```
 
-The agent is a standard-library-only binary (except gorilla/websocket). It has no external configuration file — all config comes from environment variables. The agent runs until signaled, reconnecting automatically if the WebSocket drops.
+One external dependency (gorilla/websocket). Config comes entirely from env vars. Reconnects automatically on drop.
 
 ### Protocol
 
-All WebSocket messages are JSON. The protocol uses a `type` discriminator.
+All WebSocket messages are JSON with a `type` discriminator.
 
 ```typescript
-// Agent → Core immediately after WS connect (required before any other message)
+// Agent -> Core on connect (required before anything else)
 { "type": "auth", "token": "<agent-jwt>" }
 
-// Core → Agent on successful authentication
+// Core -> Agent: success
 { "type": "auth_ok" }
 
-// Core → Agent on failed authentication (socket is then closed with code 4001)
+// Core -> Agent: failure (socket closed with 4001 after this)
 { "type": "auth_error", "reason": "invalid token" }
 
-// Agent → Core after auth_ok
+// Agent -> Core after auth_ok
 { "type": "hello", "machineId": "hostname" }
 
-// Agent → Core every 15s
+// Agent -> Core every 15s
 { "type": "heartbeat", "machineId": "hostname" }
 
-// Core → Agent for command execution
+// Core -> Agent: run a command
 { "type": "exec", "requestId": "uuid", "command": "uptime" }
 
-// Agent → Core with execution result
+// Agent -> Core: result
 { "type": "exec_result", "requestId": "uuid", "stdout": "...", "stderr": "...", "exitCode": 0 }
 ```
 
-Connection is established at `ws://core:3000/ws?machineId=hostname`. The agent must authenticate within a short window after connecting by sending an `auth` message carrying the JWT obtained during HTTP registration. Operator tokens are rejected for WebSocket connections. After `auth_ok`, the agent sends `hello` to join the in-memory registry.
+Connection endpoint: `ws://core:3000/ws?machineId=hostname`. The agent must authenticate immediately after connecting. Operator tokens are rejected at the WS layer.
 
 ---
 
 ## Machine Lifecycle
 
 ```
-HTTP register ──→ DB insert/update (machines table), returns agent JWT
-       │
-       ▼
-WS connect  ──→ ?machineId= query param
-       │
-       ▼
-auth msg    ──→ sends {"type":"auth","token":"<jwt>"}
-       │
-       ▼
-auth_ok     ──→ server validates JWT (role=agent, hostname=param)
-       │
-       ▼
-hello msg   ──→ in-memory registry adds Map<hostname, socket>
-       │
-       ▼
-heartbeat   ──→ updates machines.last_seen every 15s
-       │
-       ▼
-disconnect  ──→ registry removes entry
-       │
-       ▼
-offline     ──→ status derived: last_seen > 30s → offline
+HTTP register -> DB insert/update (machines table), returns agent JWT
+      |
+      v
+WS connect  -> ?machineId= query param
+      |
+      v
+auth msg    -> sends {"type":"auth","token":"<jwt>"}
+      |
+      v
+auth_ok     -> server validates JWT (role=agent, hostname=param)
+      |
+      v
+hello msg   -> in-memory registry adds Map<hostname, socket>
+      |
+      v
+heartbeat   -> updates machines.last_seen every 15s
+      |
+      v
+disconnect  -> registry removes entry
+      |
+      v
+offline     -> status derived: last_seen > 30s -> offline
 ```
 
-**Status is derived, not stored.** The `GET /machines` endpoint computes `status` per-request by checking if `lastSeen` is within 30 seconds. This avoids stale state bugs and keeps the persistence model simple.
+**Status is derived, not stored.** `GET /machines` checks if `lastSeen` is within 30s at query time - no background jobs, no stale writes.
 
 ---
 
@@ -157,47 +155,46 @@ offline     ──→ status derived: last_seen > 30s → offline
 
 ```
 POST /machines/:hostname/exec
-  │  { "command": "uptime" }
-  ▼
+  |  { "command": "uptime" }
+  v
 exec/service.ts
-  │  resolve hostname → UUID via machines repository
-  │  check agent is connected (in-memory registry)
-  │  create command_executions row (status: pending)
-  │  generate requestId
-  │  send { type:"exec", requestId, command } via WebSocket
-  │  register pending promise: pendingExecs.add(requestId, timeout=10s)
-  ▼
+  |  resolve hostname -> UUID via machines repository
+  |  check agent is in registry (connected)
+  |  create command_executions row (status: pending)
+  |  generate requestId
+  |  send { type:"exec", requestId, command } over WebSocket
+  |  register pending promise: pendingExecs.add(requestId, timeout=10s)
+  v
 pending.ts (in-memory Map)
-  │  Map<string, { resolve, reject, timer }>
-  │  timer will reject after 10s if no response
-  ▼
+  |  Map<string, { resolve, reject, timer }>
+  |  timer rejects after 10s if no response
+  v
 Agent receives message
-  │  parse → msg.type === "exec"
-  │  exec.Command("sh", "-c", command)
-  │  collect stdout, stderr, exit code
-  │  send { type:"exec_result", requestId, stdout, stderr, exitCode }
-  ▼
+  |  exec.Command("sh", "-c", command)
+  |  collect stdout, stderr, exit code
+  |  send { type:"exec_result", requestId, stdout, stderr, exitCode }
+  v
 Core gateway.ts receives exec_result
-  │  pendingExecs.resolve(requestId, result)
-  │  clears timer, deletes Map entry, resolves promise
-  ▼
+  |  pendingExecs.resolve(requestId, result)
+  |  clears timer, resolves promise
+  v
 exec/service.ts
-  │  executions service updates row (status: completed)
-  │  returns result to HTTP caller
-  ▼
+  |  update execution row (status: completed)
+  |  return result
+  v
 HTTP 200 { stdout, stderr, exitCode }
 ```
+
+`pending.ts` is the interesting bit: it bridges an HTTP request to an async WebSocket response using a plain `Map<string, { resolve, reject, timer }>`. No external coordination, no message queue.
 
 ### Error paths
 
 | Scenario | Behavior |
 |---|---|
-| Machine not registered | 404 machine not found |
-| Machine not connected | 502 machine not connected |
-| Agent crashes mid-exec | 10s timeout → row marked `timeout` |
+| Machine not registered | 404 |
+| Machine not connected | 502 |
+| Agent crashes mid-exec | 10s timeout, row marked `timeout` |
 | Core restarts mid-exec | `pendingExecs.rejectAll()` in shutdown hook |
-
-This is the most architecturally interesting piece: the **pending request tracker** (`modules/exec/pending.ts`) implements async distributed coordination with zero external dependencies — just a `Map<string, { resolve, reject, timer }>`.
 
 ---
 
@@ -232,35 +229,30 @@ CREATE TABLE command_executions (
 );
 ```
 
-Status values: `pending` → `completed` | `timeout`
+Status values: `pending` -> `completed` | `timeout`
 
 ---
 
-## Design Constraints
+## Scope
 
-Explicit scope boundaries:
-
-- **Not Kubernetes.** No pod management, no scheduling, no container orchestration. This is a tool for managing bare-metal or VPS machines.
-- **Not Ansible.** No idempotency, no playbooks, no DSL. Commands are single-shot `sh -c` executions.
-- **Single-core.** One core process. Horizontal scaling is not a goal.
-- **In-memory registry.** Connected agents live in a `Map<string, WebSocket>`, not a database. Restarting core loses all connection state (agents reconnect automatically).
-- **JSON protocol.** Binary serialization is explicitly deferred until there's evidence it's needed.
-- **JWT authentication.** Agents authenticate with a signed JWT obtained at HTTP registration. Operator access requires a separate Bearer token with the `operator` role. Both are verified by the core on every request.
-- **No streaming.** Command output is collected and returned as a single block. Interactive terminal sessions and real-time log streaming are future work.
-- **Minimal dependencies.** The Go agent depends only on `gorilla/websocket`. The core uses Fastify + Drizzle + Zod + Pino, which is lean for a Node.js backend.
+- **Not Kubernetes.** No scheduling, no container management. Bare-metal and VPS only.
+- **Not Ansible.** No playbooks, no idempotency. Commands are fire-and-forget `sh -c` calls.
+- **Single-core.** One process. Horizontal scaling isn't a goal.
+- **In-memory registry.** Connected agents live in a `Map<string, WebSocket>`. Core restart loses connection state (agents reconnect).
+- **JSON protocol.** Binary serialization isn't needed yet.
+- **Synchronous execution.** Output is collected and returned as a block. Streaming is future work.
+- **JWT auth.** Agents authenticate with a signed JWT from registration. Operator access uses a separate token with `role: operator`.
 
 ---
 
-## Development Environment
-
-### Quick Start
+## Development
 
 ```bash
 nix develop              # enter devshell (flake)
-pnpm install             # install JS dependencies
-docker compose up -d     # start PostgreSQL
-pnpm db:migrate          # apply schema
-pnpm --filter @zctl/core dev  # start core on :3000
+pnpm install
+docker compose up -d
+pnpm db:migrate
+pnpm --filter @zctl/core dev
 ```
 
 ### Toolchain
@@ -272,26 +264,23 @@ pnpm --filter @zctl/core dev  # start core on :3000
 | pnpm | 10 | package manager |
 | PostgreSQL | 17 | database |
 | golangci-lint | 2.x | Go linting |
-| prettier | 3.x | code formatting |
+| prettier | 3.x | formatting |
 | eslint | 10.x | JS linting |
-| gcc | 15.x | CGo support for Go agent |
 
 ### Verification
 
 ```bash
-pnpm typecheck                              # all TypeScript
-cd agents/go-agent && go build ./...        # Go agent
-nix flake check                             # full flake validation
+pnpm typecheck
+pnpm test
+cd agents/go-agent && go build ./...
 ```
 
 ---
 
 ## Future Work
 
-In rough priority order:
-
-- **Streaming execution** — real-time stdout/stderr delivery via WebSocket
-- **TLS** — terminate HTTPS/WSS at the core or via reverse proxy
-- **RBAC** — multi-user access control
-- **Agent deployment** — package agent binaries, install scripts, systemd units
-- **Structured logging** — move beyond `log.Printf` in the Go agent
+- **Streaming execution** - real-time stdout/stderr over WebSocket
+- **TLS** - HTTPS/WSS termination at core or via reverse proxy
+- **RBAC** - multi-user access control
+- **Agent deployment** - install scripts, systemd units
+- **Structured logging** - replace `log.Printf` in the Go agent

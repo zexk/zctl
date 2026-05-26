@@ -28,16 +28,14 @@ docker compose up -d     # start postgres + core
 ## Verifying
 
 ```bash
-# TypeScript — typecheck, tests, format
-pnpm typecheck
-pnpm test
-pnpm format
+# TypeScript
+pnpm typecheck && pnpm test && pnpm format
 
 # Go agent
 cd agents/go-agent && go build ./... && go vet ./...
 ```
 
-CI runs both jobs on every push via GitHub Actions (`.github/workflows/ci.yml`).
+CI runs both on every push (`.github/workflows/ci.yml`).
 
 ## Toolchain
 

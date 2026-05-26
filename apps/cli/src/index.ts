@@ -9,6 +9,7 @@ program
   .name('zctl')
   .description('remote machine orchestration')
   .version('0.0.1')
+  .enablePositionalOptions()
   .option('--url <url>', 'server URL (overrides config/env)')
   .option('--token <token>', 'operator JWT token (overrides config/env)');
 

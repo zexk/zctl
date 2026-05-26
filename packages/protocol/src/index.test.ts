@@ -55,14 +55,13 @@ describe('ServerMessageSchema', () => {
     expect(result.type).toBe('auth_error');
   });
 
-  it('accepts exec_request', () => {
+  it('accepts exec', () => {
     const result = ServerMessageSchema.parse({
-      type: 'exec_request',
-      machineId: 'm1',
-      commandId: 'c1',
+      type: 'exec',
+      requestId: 'r1',
       command: 'ls',
     });
-    expect(result.type).toBe('exec_request');
+    expect(result.type).toBe('exec');
   });
 
   it('rejects an unknown message type', () => {
@@ -84,8 +83,7 @@ describe('AgentMessageSchema', () => {
   it('accepts exec_result', () => {
     const result = AgentMessageSchema.parse({
       type: 'exec_result',
-      machineId: 'm1',
-      commandId: 'c1',
+      requestId: 'r1',
       exitCode: 0,
       stdout: '',
       stderr: '',

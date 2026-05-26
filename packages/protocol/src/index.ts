@@ -18,16 +18,14 @@ export const AuthSchema = z.object({
 });
 
 export const ExecRequestSchema = z.object({
-  type: z.literal('exec_request'),
-  machineId: z.string(),
-  commandId: z.string(),
+  type: z.literal('exec'),
+  requestId: z.string(),
   command: z.string(),
 });
 
 export const ExecResultSchema = z.object({
   type: z.literal('exec_result'),
-  machineId: z.string(),
-  commandId: z.string(),
+  requestId: z.string(),
   exitCode: z.number(),
   stdout: z.string(),
   stderr: z.string(),

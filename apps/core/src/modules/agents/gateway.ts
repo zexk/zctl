@@ -57,8 +57,8 @@ function handleConnection(socket: WebSocket, request: FastifyRequest) {
       }
 
       if (msg.type === 'hello') {
-        agentRegistry.add(msg.machineId, socket);
-        request.log.info({ machineId: msg.machineId }, 'agent connected');
+        agentRegistry.add(machineId, socket);
+        request.log.info({ machineId }, 'agent connected');
         return;
       }
 

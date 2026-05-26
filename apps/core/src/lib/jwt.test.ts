@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { signToken, verifyToken } from './jwt.js';
 

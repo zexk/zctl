@@ -2,10 +2,10 @@ package agent
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
 
 	"github.com/zexk/zctl/agent/internal/exec"
 )
@@ -14,17 +14,23 @@ type Agent struct {
 	wsURL     string
 	machineID string
 	token     string
+	log       zerolog.Logger
 }
 
-func New(wsURL, machineID, token string) *Agent {
-	return &Agent{wsURL: wsURL, machineID: machineID, token: token}
+func New(wsURL, machineID, token string, log zerolog.Logger) *Agent {
+	return &Agent{
+		wsURL:     wsURL,
+		machineID: machineID,
+		token:     token,
+		log:       log.With().Str("machine_id", machineID).Logger(),
+	}
 }
 
 func (a *Agent) Run() {
 	for {
 		c, _, err := websocket.DefaultDialer.Dial(a.wsURL+"?machineId="+a.machineID, nil)
 		if err != nil {
-			log.Printf("ws connect failed: %v (retry in 3s)", err)
+			a.log.Error().Err(err).Msg("ws connect failed, retrying in 3s")
 			time.Sleep(3 * time.Second)
 			continue
 		}
@@ -32,7 +38,7 @@ func (a *Agent) Run() {
 		auth := map[string]string{"type": "auth", "token": a.token}
 		data, _ := json.Marshal(auth)
 		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("auth send failed: %v (reconnecting...)", err)
+			a.log.Error().Err(err).Msg("auth send failed, reconnecting")
 			c.Close()
 			time.Sleep(3 * time.Second)
 			continue
@@ -40,7 +46,7 @@ func (a *Agent) Run() {
 
 		_, resp, err := c.ReadMessage()
 		if err != nil {
-			log.Printf("auth response failed: %v (reconnecting...)", err)
+			a.log.Error().Err(err).Msg("auth response failed, reconnecting")
 			c.Close()
 			time.Sleep(3 * time.Second)
 			continue
@@ -49,24 +55,24 @@ func (a *Agent) Run() {
 		var ack map[string]any
 		if err := json.Unmarshal(resp, &ack); err != nil || ack["type"] != "auth_ok" {
 			reason, _ := ack["reason"].(string)
-			log.Printf("auth rejected: %s (retry in 10s)", reason)
+			a.log.Warn().Str("reason", reason).Msg("auth rejected, retrying in 10s")
 			c.Close()
 			time.Sleep(10 * time.Second)
 			continue
 		}
 
-		log.Printf("authenticated as %s", a.machineID)
+		a.log.Info().Msg("authenticated")
 
 		hello := map[string]string{"type": "hello", "machineId": a.machineID}
 		data, _ = json.Marshal(hello)
 		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("hello send failed: %v (reconnecting...)", err)
+			a.log.Error().Err(err).Msg("hello send failed, reconnecting")
 			c.Close()
 			time.Sleep(3 * time.Second)
 			continue
 		}
 
-		log.Printf("connected to core as %s", a.machineID)
+		a.log.Info().Msg("connected to core")
 
 		done := make(chan struct{})
 		go func() {
@@ -89,7 +95,7 @@ func (a *Agent) Run() {
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				log.Printf("disconnected: %v (reconnecting...)", err)
+				a.log.Warn().Err(err).Msg("disconnected, reconnecting")
 				break
 			}
 
@@ -114,7 +120,10 @@ func (a *Agent) Run() {
 				data, _ := json.Marshal(response)
 				c.WriteMessage(websocket.TextMessage, data)
 
-				log.Printf("exec result: request=%s exit=%d", requestID, result.ExitCode)
+				a.log.Info().
+					Str("request_id", requestID).
+					Int("exit_code", result.ExitCode).
+					Msg("exec result")
 			}
 		}
 		close(done)

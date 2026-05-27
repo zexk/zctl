@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/zexk/zctl/agent/internal/agent"
 	"github.com/zexk/zctl/agent/internal/api"
@@ -15,6 +16,8 @@ import (
 )
 
 func main() {
+	log := zerolog.New(os.Stderr).With().Timestamp().Logger()
+
 	cfg := config.Load()
 	client := api.New(cfg.CoreURL)
 	info := machine.Collect(cfg.Hostname)
@@ -32,17 +35,21 @@ func main() {
 			token = resp.Token
 			break
 		}
-		log.Printf("registration failed: %v (retry in 3s)", err)
+		log.Error().Err(err).Msg("registration failed, retrying in 3s")
 		time.Sleep(3 * time.Second)
 	}
 
-	log.Printf("registered as %s (%s/%s)", info.Hostname, info.OS, info.Arch)
+	log.Info().
+		Str("hostname", info.Hostname).
+		Str("os", info.OS).
+		Str("arch", info.Arch).
+		Msg("registered")
 
-	ag := agent.New(cfg.WsURL, info.Hostname, token)
+	ag := agent.New(cfg.WsURL, info.Hostname, token, log)
 	go ag.Run()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
-	log.Println("shutting down")
+	log.Info().Msg("shutting down")
 }

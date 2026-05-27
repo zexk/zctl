@@ -53,8 +53,8 @@ async function request<T>(
 
 export const api = {
   machines: (config: Config) => request<Machine[]>(config, 'GET', '/machines'),
-  exec: (config: Config, hostname: string, command: string) =>
-    request<ExecResult>(config, 'POST', `/machines/${hostname}/exec`, { command }),
+  exec: (config: Config, hostname: string, command: string, timeoutMs?: number) =>
+    request<ExecResult>(config, 'POST', `/machines/${hostname}/exec`, { command, timeoutMs }),
   executions: (config: Config, hostname: string) =>
     request<Execution[]>(config, 'GET', `/machines/${hostname}/executions`),
 };

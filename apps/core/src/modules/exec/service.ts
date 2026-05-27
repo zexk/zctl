@@ -6,7 +6,7 @@ import { env } from '../../config/env.js';
 
 const MAX_OUTPUT_CHARS = 1_000_000;
 
-export async function executeOnMachine(hostname: string, command: string) {
+export async function executeOnMachine(hostname: string, command: string, timeoutMs?: number) {
   const machine = await findByHostname(hostname);
   if (!machine) throw new Error('machine not found');
 
@@ -18,7 +18,7 @@ export async function executeOnMachine(hostname: string, command: string) {
 
   try {
     conn.socket.send(JSON.stringify({ type: 'exec', requestId, command }));
-    const result = await pendingExecs.add(requestId, env.EXEC_TIMEOUT_MS);
+    const result = await pendingExecs.add(requestId, timeoutMs ?? env.EXEC_TIMEOUT_MS);
     await executions.completeExecution(execution.id, {
       stdout: result.stdout.slice(0, MAX_OUTPUT_CHARS),
       stderr: result.stderr.slice(0, MAX_OUTPUT_CHARS),

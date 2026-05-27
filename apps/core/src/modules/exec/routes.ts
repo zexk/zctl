@@ -5,6 +5,7 @@ import { executeOnMachine } from './service.js';
 
 const execBodySchema = z.object({
   command: z.string().min(1),
+  timeoutMs: z.coerce.number().int().positive().optional(),
 });
 
 export async function execRoutes(app: FastifyInstance) {
@@ -20,7 +21,7 @@ export async function execRoutes(app: FastifyInstance) {
       const { id } = request.params as { id: string };
 
       try {
-        const result = await executeOnMachine(id, body.data.command);
+        const result = await executeOnMachine(id, body.data.command, body.data.timeoutMs);
         return reply.send(result);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'execution failed';

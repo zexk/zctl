@@ -8,7 +8,7 @@ const program = new Command();
 program
   .name('zctl')
   .description('remote machine orchestration')
-  .version('0.0.1')
+  .version('0.1.0')
   .enablePositionalOptions()
   .option('--url <url>', 'server URL (overrides config/env)')
   .option('--token <token>', 'operator JWT token (overrides config/env)');
@@ -52,9 +52,11 @@ program
   .description('execute a command on a machine')
   .argument('<machine>', 'machine hostname')
   .argument('<command...>', 'command to run')
-  .action(async (machine: string, commandParts: string[]) => {
+  .option('-t, --timeout <seconds>', 'execution timeout in seconds')
+  .action(async (machine: string, commandParts: string[], opts: { timeout?: string }) => {
     const config = resolveConfig(program.opts());
-    const result = await api.exec(config, machine, commandParts.join(' '));
+    const timeoutMs = opts.timeout ? Math.round(parseFloat(opts.timeout) * 1000) : undefined;
+    const result = await api.exec(config, machine, commandParts.join(' '), timeoutMs);
 
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);

@@ -29,6 +29,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   agent:
     build:
@@ -39,7 +45,7 @@ services:
       HOSTNAME: docker-agent
     depends_on:
       core:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   pgdata:

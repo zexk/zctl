@@ -190,13 +190,13 @@ HTTP 200 { stdout, stderr, exitCode }
 
 ### Error paths
 
-| Scenario               | Behavior                                                           |
-| ---------------------- | ------------------------------------------------------------------ |
-| Machine not registered | 404                                                                |
-| Machine not connected  | 502                                                                |
+| Scenario                   | Behavior                                                           |
+| -------------------------- | ------------------------------------------------------------------ |
+| Machine not registered     | 404                                                                |
+| Machine not connected      | 502                                                                |
 | Agent disconnects mid-exec | immediate rejection via `rejectForMachine()`, row marked `timeout` |
-| No response within 10s | timer rejects promise, row marked `timeout`                        |
-| Core restarts mid-exec | `pendingExecs.rejectAll()` in shutdown hook                        |
+| No response within 10s     | timer rejects promise, row marked `timeout`                        |
+| Core restarts mid-exec     | `pendingExecs.rejectAll()` in shutdown hook                        |
 
 ---
 

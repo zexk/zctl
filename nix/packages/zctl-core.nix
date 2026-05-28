@@ -17,7 +17,7 @@ let
         ../../packages/shared/package.json
       ];
     };
-    hash = "sha256-Pen3j6LvTiZUzdeUqhGLHRtRAkznXmf7STXPmMh211Y=";
+    hash = "sha256-q1KDigYCxzxgYTPJUfCrpM0V+nRRtVy8v/FcM9n2gFs=";
   };
 in
 stdenv.mkDerivation {

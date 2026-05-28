@@ -86,6 +86,7 @@ func (a *Agent) Run() {
 					if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
 						return
 					}
+					a.log.Debug().Msg("heartbeat sent")
 				case <-done:
 					return
 				}
@@ -108,6 +109,8 @@ func (a *Agent) Run() {
 				requestID, _ := msg["requestId"].(string)
 				command, _ := msg["command"].(string)
 
+				a.log.Debug().Str("request_id", requestID).Str("command", command).Msg("exec start")
+				start := time.Now()
 				result := exec.Run(command)
 
 				response := map[string]any{
@@ -122,8 +125,10 @@ func (a *Agent) Run() {
 
 				a.log.Info().
 					Str("request_id", requestID).
+					Str("command", command).
 					Int("exit_code", result.ExitCode).
-					Msg("exec result")
+					Dur("duration_ms", time.Since(start)).
+					Msg("exec done")
 			}
 		}
 		close(done)

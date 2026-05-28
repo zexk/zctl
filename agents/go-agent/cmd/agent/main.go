@@ -16,9 +16,8 @@ import (
 )
 
 func main() {
-	log := zerolog.New(os.Stderr).With().Timestamp().Logger()
-
 	cfg := config.Load()
+	log := zerolog.New(os.Stderr).Level(cfg.LogLevel).With().Timestamp().Logger()
 	client := api.New(cfg.CoreURL)
 	info := machine.Collect(cfg.Hostname)
 

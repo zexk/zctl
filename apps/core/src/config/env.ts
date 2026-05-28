@@ -9,6 +9,7 @@ const envSchema = z.object({
   JWT_EXPIRY_AGENT: z.string().default('24h'),
   JWT_EXPIRY_OPERATOR: z.string().default('90d'),
   EXEC_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  CORS_ORIGIN: z.string().default('*'),
 });
 
 const result = envSchema.safeParse(process.env);

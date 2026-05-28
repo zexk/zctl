@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.1",
+    "@fastify/rate-limit": "^10.3.0",
     "@fastify/websocket": "^11.1",
     "@zctl/config": "workspace:*",
     "@zctl/protocol": "workspace:*",

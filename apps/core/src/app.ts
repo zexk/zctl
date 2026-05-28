@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { healthRoute } from './routes/health.js';
 import { wsHandler } from './ws/handler.js';
 import { machinesRoutes } from './modules/machines/routes.js';
@@ -9,6 +10,7 @@ import { execRoutes } from './modules/exec/routes.js';
 import { executionsRoutes } from './modules/executions/routes.js';
 import { verifyToken } from './lib/jwt.js';
 import type { ZctlJwtPayload } from './lib/jwt.js';
+import { env } from './config/env.js';
 
 const PUBLIC_PATHS = new Set(['/health', '/machines/register', '/ws']);
 
@@ -20,7 +22,8 @@ function pathname(url: string): string {
 export async function buildApp(opts: { logger: boolean }) {
   const app = Fastify(opts);
 
-  await app.register(cors);
+  await app.register(cors, { origin: env.CORS_ORIGIN });
+  await app.register(rateLimit, { global: false });
   await app.register(fastifyWebsocket);
 
   app.addHook('onRequest', async (request, reply) => {

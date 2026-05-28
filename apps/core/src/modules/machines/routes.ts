@@ -15,13 +15,17 @@ export async function machinesRoutes(app: FastifyInstance) {
     return reply.send(machines);
   });
 
-  app.post('/machines/register', async (request, reply) => {
-    const result = registerSchema.safeParse(request.body);
-    if (!result.success) {
-      return reply.status(400).send({ error: 'invalid input', issues: result.error.issues });
-    }
+  app.post(
+    '/machines/register',
+    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const result = registerSchema.safeParse(request.body);
+      if (!result.success) {
+        return reply.status(400).send({ error: 'invalid input', issues: result.error.issues });
+      }
 
-    const { machine, token } = await service.registerMachine(result.data);
-    return reply.status(201).send({ id: machine.id, hostname: machine.hostname, token });
-  });
+      const { machine, token } = await service.registerMachine(result.data);
+      return reply.status(201).send({ id: machine.id, hostname: machine.hostname, token });
+    },
+  );
 }

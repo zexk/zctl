@@ -78,11 +78,13 @@ function handleConnection(socket: WebSocket, request: FastifyRequest) {
 
   socket.on('close', () => {
     agentRegistry.remove(machineId);
+    pendingExecs.rejectForMachine(machineId, new Error('agent disconnected'));
     request.log.info({ machineId }, 'agent disconnected');
   });
 
   socket.on('error', () => {
     agentRegistry.remove(machineId);
+    pendingExecs.rejectForMachine(machineId, new Error('agent connection error'));
   });
 }
 

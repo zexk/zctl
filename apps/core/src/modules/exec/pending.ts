@@ -4,19 +4,20 @@ type PendingEntry = {
   resolve: (result: ExecResult) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  machineId: string;
 };
 
 class PendingTracker {
   private pending = new Map<string, PendingEntry>();
 
-  add(requestId: string, timeoutMs: number): Promise<ExecResult> {
+  add(requestId: string, machineId: string, timeoutMs: number): Promise<ExecResult> {
     return new Promise<ExecResult>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
         reject(new Error('execution timed out'));
       }, timeoutMs);
 
-      this.pending.set(requestId, { resolve, reject, timer });
+      this.pending.set(requestId, { resolve, reject, timer, machineId });
     });
   }
 
@@ -26,6 +27,16 @@ class PendingTracker {
     clearTimeout(entry.timer);
     this.pending.delete(requestId);
     entry.resolve(result);
+  }
+
+  rejectForMachine(machineId: string, error: Error): void {
+    for (const [requestId, entry] of this.pending.entries()) {
+      if (entry.machineId === machineId) {
+        clearTimeout(entry.timer);
+        this.pending.delete(requestId);
+        entry.reject(error);
+      }
+    }
   }
 
   rejectAll(): void {

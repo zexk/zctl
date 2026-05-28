@@ -14,6 +14,7 @@ vi.mock('../exec/pending.js', () => ({
   pendingExecs: {
     resolve: vi.fn(),
     rejectAll: vi.fn(),
+    rejectForMachine: vi.fn(),
   },
 }));
 
@@ -143,6 +144,15 @@ describe('handleConnection', () => {
       'req-1',
       expect.objectContaining({ requestId: 'req-1' }),
     );
+  });
+
+  it('rejects pending execs for machine on disconnect', () => {
+    const socket = mockSocket();
+    handleConnection(socket, mockRequest('test-host'));
+    sendJson(socket, { type: 'auth', token: agentToken });
+    sendJson(socket, { type: 'hello', machineId: 'test-host' });
+    socket._emit('close');
+    expect(pendingExecs.rejectForMachine).toHaveBeenCalledWith('test-host', expect.any(Error));
   });
 
   it('does not process messages before auth', () => {

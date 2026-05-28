@@ -1,4 +1,8 @@
-import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+
+vi.mock('./db/index.js', () => ({
+  verifyConnection: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('./modules/machines/repository.js', () => ({
   findAll: vi.fn().mockResolvedValue([
@@ -59,10 +63,23 @@ describe('auth middleware', () => {
   });
 
   describe('GET /health (public)', () => {
+    beforeEach(async () => {
+      const { verifyConnection } = await import('./db/index.js');
+      vi.mocked(verifyConnection).mockResolvedValue(undefined);
+    });
+
     it('returns 200 without Authorization header', async () => {
       const res = await app.inject({ method: 'GET', url: '/health' });
       expect(res.statusCode).toBe(200);
       expect(res.json()).toMatchObject({ status: 'ok' });
+    });
+
+    it('returns 503 when DB is unavailable', async () => {
+      const { verifyConnection } = await import('./db/index.js');
+      vi.mocked(verifyConnection).mockRejectedValueOnce(new Error('db down'));
+      const res = await app.inject({ method: 'GET', url: '/health' });
+      expect(res.statusCode).toBe(503);
+      expect(res.json()).toMatchObject({ status: 'error' });
     });
   });
 

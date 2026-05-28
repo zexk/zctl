@@ -87,7 +87,7 @@ imports = [ inputs.zctl.nixosModules.zctl ];
 ```nix
 services.zctl.core = {
   enable = true;
-  environmentFile = "/run/secrets/zctl-env"; # must contain JWT_SECRET=<32+ chars>
+  environmentFile = "/run/secrets/zctl-env"; # JWT_SECRET=<32+ chars>; CORS_ORIGIN=https://zctl.example.com (defaults to *)
   openFirewall = true;
 };
 ```

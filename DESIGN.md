@@ -71,6 +71,7 @@ Notes:
 
 - `app.ts` is a pure factory - no `listen()`. Keeps test setup and shutdown hooks independent of the server lifecycle.
 - `server.ts` owns startup: validate env -> connect DB -> build app -> register shutdown hooks -> listen. Calls `pendingExecs.rejectAll()` and `agentRegistry.closeAll()` on shutdown.
+- `routes/health.ts` returns 200 when the DB is reachable, 503 otherwise — used by the Docker healthcheck and `depends_on: service_healthy`.
 - WebSocket routes are registered inside `app.register()` scopes via `@fastify/websocket`.
 
 ### Agent (`agents/go-agent`)
@@ -189,12 +190,13 @@ HTTP 200 { stdout, stderr, exitCode }
 
 ### Error paths
 
-| Scenario               | Behavior                                    |
-| ---------------------- | ------------------------------------------- |
-| Machine not registered | 404                                         |
-| Machine not connected  | 502                                         |
-| Agent crashes mid-exec | 10s timeout, row marked `timeout`           |
-| Core restarts mid-exec | `pendingExecs.rejectAll()` in shutdown hook |
+| Scenario               | Behavior                                                           |
+| ---------------------- | ------------------------------------------------------------------ |
+| Machine not registered | 404                                                                |
+| Machine not connected  | 502                                                                |
+| Agent disconnects mid-exec | immediate rejection via `rejectForMachine()`, row marked `timeout` |
+| No response within 10s | timer rejects promise, row marked `timeout`                        |
+| Core restarts mid-exec | `pendingExecs.rejectAll()` in shutdown hook                        |
 
 ---
 

@@ -11,6 +11,9 @@ class PendingTracker {
   private pending = new Map<string, PendingEntry>();
 
   add(requestId: string, machineId: string, timeoutMs: number): Promise<ExecResult> {
+    if (this.pending.has(requestId)) {
+      return Promise.reject(new Error(`duplicate requestId: ${requestId}`));
+    }
     return new Promise<ExecResult>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);

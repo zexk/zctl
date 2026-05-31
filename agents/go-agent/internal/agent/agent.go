@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 
 	"github.com/zexk/zctl/agent/internal/exec"
 )
+
+const maxExecTimeout = 10 * time.Minute
 
 type Agent struct {
 	wsURL     string
@@ -111,7 +114,9 @@ func (a *Agent) Run() {
 
 				a.log.Debug().Str("request_id", requestID).Str("command", command).Msg("exec start")
 				start := time.Now()
-				result := exec.Run(command)
+				ctx, cancel := context.WithTimeout(context.Background(), maxExecTimeout)
+				result := exec.Run(ctx, command)
+				cancel()
 
 				response := map[string]any{
 					"type":      "exec_result",

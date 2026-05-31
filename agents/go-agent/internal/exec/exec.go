@@ -2,6 +2,7 @@ package exec
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 )
 
@@ -11,8 +12,8 @@ type Result struct {
 	Stderr   string `json:"stderr"`
 }
 
-func Run(command string) *Result {
-	cmd := exec.Command("sh", "-c", command)
+func Run(ctx context.Context, command string) *Result {
+	cmd := exec.CommandContext(ctx, "sh", "-c", command)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

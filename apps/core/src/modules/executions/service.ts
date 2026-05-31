@@ -11,8 +11,12 @@ export async function completeExecution(
   return repository.updateResult(id, result);
 }
 
-export async function failExecution(id: string) {
+export async function timeoutExecution(id: string) {
   return repository.markTimeout(id);
+}
+
+export async function failExecution(id: string) {
+  return repository.markFailed(id);
 }
 
 export async function listExecutions(machineId: string) {

@@ -27,10 +27,14 @@ export async function updateResult(
 export async function markTimeout(id: string): Promise<void> {
   await db
     .update(commandExecutions)
-    .set({
-      status: 'timeout',
-      completedAt: new Date(),
-    })
+    .set({ status: 'timeout', completedAt: new Date() })
+    .where(eq(commandExecutions.id, id));
+}
+
+export async function markFailed(id: string): Promise<void> {
+  await db
+    .update(commandExecutions)
+    .set({ status: 'failed', completedAt: new Date() })
     .where(eq(commandExecutions.id, id));
 }
 

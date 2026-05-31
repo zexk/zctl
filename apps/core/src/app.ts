@@ -12,6 +12,12 @@ import { verifyToken } from './lib/jwt.js';
 import type { ZctlJwtPayload } from './lib/jwt.js';
 import { env } from './config/env.js';
 
+declare module 'fastify' {
+  interface FastifyRequest {
+    user?: ZctlJwtPayload;
+  }
+}
+
 const PUBLIC_PATHS = new Set(['/health', '/machines/register', '/ws']);
 
 function pathname(url: string): string {
@@ -35,8 +41,7 @@ export async function buildApp(opts: { logger: boolean }) {
     }
 
     try {
-      const payload = verifyToken(auth.slice(7));
-      (request as any).user = payload;
+      request.user = verifyToken(auth.slice(7));
     } catch {
       return reply.status(401).send({ error: 'invalid or expired token' });
     }
@@ -57,8 +62,7 @@ export async function buildApp(opts: { logger: boolean }) {
 
 export function requireRole(role: ZctlJwtPayload['role']) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
-    const user = (request as any).user as ZctlJwtPayload | undefined;
-    if (!user || user.role !== role) {
+    if (!request.user || request.user.role !== role) {
       return reply.status(403).send({ error: 'forbidden' });
     }
   };

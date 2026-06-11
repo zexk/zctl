@@ -14,8 +14,14 @@ class AgentRegistry {
     this.connections.set(machineId, { machineId, socket, connectedAt: new Date() });
   }
 
-  remove(machineId: string): void {
+  // Only removes when `socket` is still the registered connection, so a stale
+  // socket's close event (e.g. after being evicted by add) cannot drop a newer
+  // connection for the same machine. Returns whether an entry was removed.
+  remove(machineId: string, socket: WebSocket): boolean {
+    const existing = this.connections.get(machineId);
+    if (!existing || existing.socket !== socket) return false;
     this.connections.delete(machineId);
+    return true;
   }
 
   get(machineId: string): AgentConnection | undefined {

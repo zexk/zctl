@@ -24,9 +24,11 @@ class PendingTracker {
     });
   }
 
-  resolve(requestId: string, result: ExecResult): void {
+  // machineId must match the machine the exec was dispatched to, so one
+  // agent cannot complete another machine's execution.
+  resolve(requestId: string, machineId: string, result: ExecResult): void {
     const entry = this.pending.get(requestId);
-    if (!entry) return;
+    if (!entry || entry.machineId !== machineId) return;
     clearTimeout(entry.timer);
     this.pending.delete(requestId);
     entry.resolve(result);

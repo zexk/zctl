@@ -47,6 +47,7 @@ vi.mock('./modules/machines/repository.js', () => ({
 
 import { signToken } from './lib/jwt.js';
 import { buildApp } from './app.js';
+import { agentRegistry } from './modules/agents/registry.js';
 
 const operatorToken = signToken({ sub: 'admin', role: 'operator' }, '1h');
 const agentToken = signToken({ sub: 'machine-1', role: 'agent', hostname: 'test-host' }, '1h');
@@ -103,6 +104,22 @@ describe('auth middleware', () => {
         payload: {},
       });
       expect(res.statusCode).toBe(400);
+    });
+
+    it('returns 409 when the hostname has a connected agent', async () => {
+      const socket = { close: vi.fn() } as any;
+      agentRegistry.add('existing', socket);
+      try {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/machines/register',
+          payload: { hostname: 'existing' },
+        });
+        expect(res.statusCode).toBe(409);
+        expect(res.json()).toEqual({ error: 'machine already connected' });
+      } finally {
+        agentRegistry.remove('existing', socket);
+      }
     });
   });
 

@@ -24,8 +24,15 @@ export async function machinesRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'invalid input', issues: result.error.issues });
       }
 
-      const { machine, token } = await service.registerMachine(result.data);
-      return reply.status(201).send({ id: machine.id, hostname: machine.hostname, token });
+      try {
+        const { machine, token } = await service.registerMachine(result.data);
+        return reply.status(201).send({ id: machine.id, hostname: machine.hostname, token });
+      } catch (err) {
+        if (err instanceof service.MachineConnectedError) {
+          return reply.status(409).send({ error: 'machine already connected' });
+        }
+        throw err;
+      }
     },
   );
 }

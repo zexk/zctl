@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -38,9 +39,21 @@ func (a *Agent) Run() {
 			continue
 		}
 
+		// gorilla/websocket allows only one concurrent writer; the heartbeat
+		// goroutine and the read loop both write, so serialize through writeJSON.
+		var writeMu sync.Mutex
+		writeJSON := func(v any) error {
+			data, err := json.Marshal(v)
+			if err != nil {
+				return err
+			}
+			writeMu.Lock()
+			defer writeMu.Unlock()
+			return c.WriteMessage(websocket.TextMessage, data)
+		}
+
 		auth := map[string]string{"type": "auth", "token": a.token}
-		data, _ := json.Marshal(auth)
-		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+		if err := writeJSON(auth); err != nil {
 			a.log.Error().Err(err).Msg("auth send failed, reconnecting")
 			c.Close()
 			time.Sleep(3 * time.Second)
@@ -67,8 +80,7 @@ func (a *Agent) Run() {
 		a.log.Info().Msg("authenticated")
 
 		hello := map[string]string{"type": "hello", "machineId": a.machineID}
-		data, _ = json.Marshal(hello)
-		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+		if err := writeJSON(hello); err != nil {
 			a.log.Error().Err(err).Msg("hello send failed, reconnecting")
 			c.Close()
 			time.Sleep(3 * time.Second)
@@ -85,8 +97,7 @@ func (a *Agent) Run() {
 				select {
 				case <-ticker.C:
 					msg := map[string]string{"type": "heartbeat", "machineId": a.machineID}
-					data, _ := json.Marshal(msg)
-					if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
+					if err := writeJSON(msg); err != nil {
 						return
 					}
 					a.log.Debug().Msg("heartbeat sent")
@@ -125,8 +136,9 @@ func (a *Agent) Run() {
 					"stderr":    result.Stderr,
 					"exitCode":  result.ExitCode,
 				}
-				data, _ := json.Marshal(response)
-				c.WriteMessage(websocket.TextMessage, data)
+				if err := writeJSON(response); err != nil {
+					a.log.Warn().Err(err).Msg("exec_result send failed")
+				}
 
 				a.log.Info().
 					Str("request_id", requestID).

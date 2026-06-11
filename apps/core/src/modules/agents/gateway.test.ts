@@ -3,7 +3,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 vi.mock('./registry.js', () => ({
   agentRegistry: {
     add: vi.fn(),
-    remove: vi.fn(),
+    remove: vi.fn().mockReturnValue(true),
     get: vi.fn(),
     list: vi.fn(),
     closeAll: vi.fn(),
@@ -142,6 +142,7 @@ describe('handleConnection', () => {
     });
     expect(pendingExecs.resolve).toHaveBeenCalledWith(
       'req-1',
+      'test-host',
       expect.objectContaining({ requestId: 'req-1' }),
     );
   });
@@ -152,7 +153,18 @@ describe('handleConnection', () => {
     sendJson(socket, { type: 'auth', token: agentToken });
     sendJson(socket, { type: 'hello', machineId: 'test-host' });
     socket._emit('close');
+    expect(agentRegistry.remove).toHaveBeenCalledWith('test-host', socket);
     expect(pendingExecs.rejectForMachine).toHaveBeenCalledWith('test-host', expect.any(Error));
+  });
+
+  it('does not reject pending execs when a stale socket closes', () => {
+    vi.mocked(agentRegistry.remove).mockReturnValueOnce(false);
+    const socket = mockSocket();
+    handleConnection(socket, mockRequest('test-host'));
+    sendJson(socket, { type: 'auth', token: agentToken });
+    sendJson(socket, { type: 'hello', machineId: 'test-host' });
+    socket._emit('close');
+    expect(pendingExecs.rejectForMachine).not.toHaveBeenCalled();
   });
 
   it('does not process messages before auth', () => {

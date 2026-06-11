@@ -68,7 +68,7 @@ function handleConnection(socket: WebSocket, request: FastifyRequest) {
       }
 
       if (msg.type === 'exec_result') {
-        pendingExecs.resolve(msg.requestId, msg);
+        pendingExecs.resolve(msg.requestId, machineId, msg);
         return;
       }
     } catch {
@@ -77,14 +77,16 @@ function handleConnection(socket: WebSocket, request: FastifyRequest) {
   });
 
   socket.on('close', () => {
-    agentRegistry.remove(machineId);
-    pendingExecs.rejectForMachine(machineId, new Error('agent disconnected'));
-    request.log.info({ machineId }, 'agent disconnected');
+    if (agentRegistry.remove(machineId, socket)) {
+      pendingExecs.rejectForMachine(machineId, new Error('agent disconnected'));
+      request.log.info({ machineId }, 'agent disconnected');
+    }
   });
 
   socket.on('error', () => {
-    agentRegistry.remove(machineId);
-    pendingExecs.rejectForMachine(machineId, new Error('agent connection error'));
+    if (agentRegistry.remove(machineId, socket)) {
+      pendingExecs.rejectForMachine(machineId, new Error('agent connection error'));
+    }
   });
 }
 

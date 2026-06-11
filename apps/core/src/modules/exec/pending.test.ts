@@ -13,7 +13,7 @@ describe('PendingTracker', () => {
 
   it('resolves the correct promise by requestId', async () => {
     const p = pendingExecs.add('req-1', 'machine-a', 5000);
-    pendingExecs.resolve('req-1', {
+    pendingExecs.resolve('req-1', 'machine-a', {
       type: 'exec_result',
       requestId: 'req-1',
       stdout: 'hi',
@@ -21,6 +21,27 @@ describe('PendingTracker', () => {
       exitCode: 0,
     });
     await expect(p).resolves.toMatchObject({ stdout: 'hi' });
+  });
+
+  it('ignores a resolve from a different machine', async () => {
+    const p = pendingExecs.add('req-x', 'machine-a', 5000);
+    pendingExecs.resolve('req-x', 'machine-b', {
+      type: 'exec_result',
+      requestId: 'req-x',
+      stdout: 'forged',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    // still pending — the rightful machine can resolve it
+    pendingExecs.resolve('req-x', 'machine-a', {
+      type: 'exec_result',
+      requestId: 'req-x',
+      stdout: 'real',
+      stderr: '',
+      exitCode: 0,
+    });
+    await expect(p).resolves.toMatchObject({ stdout: 'real' });
   });
 
   it('rejectForMachine rejects only entries for the given machine', async () => {
@@ -32,7 +53,7 @@ describe('PendingTracker', () => {
     await expect(pA).rejects.toThrow('disconnected');
 
     // machine-b entry is still pending — resolve it cleanly
-    pendingExecs.resolve('req-b', {
+    pendingExecs.resolve('req-b', 'machine-b', {
       type: 'exec_result',
       requestId: 'req-b',
       stdout: '',

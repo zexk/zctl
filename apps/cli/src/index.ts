@@ -77,7 +77,7 @@ program
       return;
     }
 
-    const entries = executions.slice(-parseInt(opts.limit, 10));
+    const entries = executions.slice(0, parseInt(opts.limit, 10));
     const pad = (s: string | null | undefined, w: number) => (s ?? '-').padEnd(w);
 
     console.log(`${'COMMAND'.padEnd(32)} ${'STATUS'.padEnd(10)} ${'EXIT'.padEnd(6)} CREATED`);

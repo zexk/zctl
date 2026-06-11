@@ -1,6 +1,7 @@
 import { env } from './config/env.js';
 import { buildApp } from './app.js';
 import { verifyConnection } from './db/index.js';
+import { closeDb } from './db/client.js';
 import { agentRegistry } from './modules/agents/registry.js';
 import { pendingExecs } from './modules/exec/pending.js';
 
@@ -20,6 +21,8 @@ export async function startServer() {
     pendingExecs.rejectAll();
     agentRegistry.closeAll();
     await app.close();
+    // postgres-js keeps its sockets open otherwise, so the process never exits
+    await closeDb();
   };
 
   process.on('SIGINT', shutdown);

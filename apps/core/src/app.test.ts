@@ -84,6 +84,19 @@ describe('auth middleware', () => {
     });
   });
 
+  describe('GET /dashboard (public)', () => {
+    it('serves the dashboard shell without Authorization header', async () => {
+      const res = await app.inject({ method: 'GET', url: '/dashboard' });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['content-type']).toContain('text/html');
+      expect(res.body).toContain('<h1>zctl</h1>');
+      expect(res.body).toContain('id="theme-toggle"');
+      expect(res.body).toContain('prefers-color-scheme: dark');
+      expect(res.body).toContain('zctl.theme');
+      expect(res.body).toContain('/machines');
+    });
+  });
+
   describe('POST /machines/register (public)', () => {
     it('returns 201 without Authorization header', async () => {
       const res = await app.inject({

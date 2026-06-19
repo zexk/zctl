@@ -47,6 +47,7 @@ src/
 │       ├── service.ts      # execution lifecycle
 │       └── routes.ts       # GET /machines/:id/executions
 ├── routes/health.ts        # 200 when DB reachable, 503 otherwise
+├── routes/dashboard.ts     # static operator dashboard shell
 ├── ws/handler.ts
 ├── app.ts                  # Fastify factory (no listen())
 ├── server.ts               # startup ordering, shutdown hooks
@@ -86,6 +87,19 @@ All WebSocket messages are JSON with a `type` discriminator.
 ```
 
 Endpoint: `ws://core:3000/ws?machineId=hostname`. Operator tokens are rejected at the WS layer.
+
+## HTTP Surfaces
+
+| Route                                | Auth     | Purpose                                      |
+| ------------------------------------ | -------- | -------------------------------------------- |
+| `GET /health`                        | Public   | Database-backed health check                 |
+| `GET /dashboard`                     | Public   | Static browser dashboard shell               |
+| `GET /machines`                      | Operator | List registered machines and computed status |
+| `POST /machines/register`            | Public   | Register or refresh an agent                 |
+| `POST /machines/:hostname/exec`      | Operator | Run a command on a connected machine         |
+| `GET /machines/:hostname/executions` | Operator | List command execution history               |
+
+The dashboard is intentionally thin: it stores the operator token in browser `localStorage`, calls the same protected JSON endpoints as the CLI, and does not introduce separate server-side session state. Its theme defaults to `prefers-color-scheme` on first load and persists manual light/dark selection in `localStorage`.
 
 ## Machine Lifecycle
 

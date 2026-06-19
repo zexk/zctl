@@ -4,6 +4,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { healthRoute } from './routes/health.js';
+import { dashboardRoute } from './routes/dashboard.js';
 import { wsHandler } from './ws/handler.js';
 import { machinesRoutes } from './modules/machines/routes.js';
 import { execRoutes } from './modules/exec/routes.js';
@@ -18,7 +19,7 @@ declare module 'fastify' {
   }
 }
 
-const PUBLIC_PATHS = new Set(['/health', '/machines/register', '/ws']);
+const PUBLIC_PATHS = new Set(['/health', '/dashboard', '/machines/register', '/ws']);
 
 function pathname(url: string): string {
   const idx = url.indexOf('?');
@@ -49,6 +50,7 @@ export async function buildApp(opts: { logger: boolean }) {
 
   app.get('/health', healthRoute);
 
+  app.register(dashboardRoute);
   app.register(machinesRoutes);
   app.register(execRoutes);
   app.register(executionsRoutes);

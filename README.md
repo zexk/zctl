@@ -48,6 +48,14 @@ COMMAND                          STATUS     EXIT   CREATED
 uptime                           completed  0      5/26/2025, 10:42:01 AM
 ```
 
+The core also serves a small operator dashboard:
+
+```text
+http://localhost:3000/dashboard
+```
+
+Paste the same operator token into the dashboard to view machines, recent executions, and run commands. The page matches the system light/dark theme on first load and includes a manual theme toggle.
+
 ## Features
 
 - Machine registration with persistent WebSocket connectivity
@@ -55,6 +63,7 @@ uptime                           completed  0      5/26/2025, 10:42:01 AM
 - Remote command execution via `sh -c`, output stored per execution
 - Online/offline status derived from heartbeat timestamps
 - Execution history per machine
+- Browser dashboard backed by the same operator API endpoints
 
 ## Architecture
 

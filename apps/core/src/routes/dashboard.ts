@@ -46,7 +46,7 @@ const dashboardHtml = `<!doctype html>
         background: var(--bg);
         color: var(--ink);
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 14px;
+        font-size: 15px;
       }
 
       button,
@@ -56,9 +56,12 @@ const dashboardHtml = `<!doctype html>
       }
 
       .shell {
-        width: min(1120px, calc(100% - 16px));
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: min(1200px, calc(100% - 48px));
         margin: 0 auto;
-        padding: 8px 0;
+        padding: 24px 0;
       }
 
       header {
@@ -68,26 +71,32 @@ const dashboardHtml = `<!doctype html>
         border: 1px solid var(--line);
         border-bottom: 0;
         background: var(--head);
-        padding: 8px;
+        padding: 14px 24px;
       }
 
       h1 {
         margin: 0;
-        font-size: 20px;
+        font-size: 26px;
         line-height: 1;
       }
 
       .panel {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
         border: 1px solid var(--line);
         background: var(--panel);
-        padding: 8px;
+        padding: 24px;
       }
 
       .auth {
         display: grid;
         grid-template-columns: 1fr auto auto;
-        gap: 6px;
-        margin-bottom: 8px;
+        gap: 12px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--soft-line);
       }
 
       input,
@@ -97,7 +106,7 @@ const dashboardHtml = `<!doctype html>
         border-radius: 0;
         background: var(--panel);
         color: var(--ink);
-        padding: 5px 6px;
+        padding: 10px 12px;
       }
 
       button {
@@ -106,7 +115,7 @@ const dashboardHtml = `<!doctype html>
         background: var(--accent);
         color: var(--accent-ink);
         cursor: pointer;
-        padding: 5px 10px;
+        padding: 8px 16px;
         font-weight: 600;
       }
 
@@ -121,43 +130,26 @@ const dashboardHtml = `<!doctype html>
         opacity: 0.65;
       }
 
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0;
-        margin-bottom: 8px;
-        border-top: 1px solid var(--line);
-        border-left: 1px solid var(--line);
-      }
-
-      .stat {
-        border-right: 1px solid var(--line);
-        border-bottom: 1px solid var(--line);
-        background: var(--panel);
-        padding: 6px 8px;
-      }
-
-      .stat span {
-        display: inline;
-        color: var(--muted);
-        font-size: 12px;
-        text-transform: uppercase;
-      }
-
-      .stat strong {
-        display: inline;
-        margin-left: 8px;
-        font-size: 16px;
-      }
-
       .grid {
+        flex: 1;
+        min-height: 0;
         display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 8px;
+        grid-template-columns: 420px 1fr;
+        gap: 24px;
+      }
+
+      .grid > section {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
       }
 
       .machine-list {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
         display: grid;
+        align-content: start;
         gap: 0;
         border-top: 1px solid var(--soft-line);
         border-left: 1px solid var(--soft-line);
@@ -172,7 +164,12 @@ const dashboardHtml = `<!doctype html>
         background: var(--panel);
         color: var(--ink);
         text-align: left;
-        padding: 6px;
+        padding: 10px 14px;
+      }
+
+      .machine .meta {
+        font-size: 11px;
+        min-height: 1.2em;
       }
 
       .machine.active {
@@ -185,7 +182,7 @@ const dashboardHtml = `<!doctype html>
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 10px;
         font-weight: 700;
       }
 
@@ -194,16 +191,44 @@ const dashboardHtml = `<!doctype html>
       .error,
       .empty {
         color: var(--muted);
-        font-size: 12px;
+        font-size: 13px;
+        margin: 0;
+      }
+
+      .empty {
+        padding: 16px;
+      }
+
+      .executions .empty {
+        padding: 12px 16px;
       }
 
       .status {
         border: 1px solid var(--soft-line);
         border-radius: 0;
-        padding: 1px 5px;
+        padding: 2px 8px;
         background: var(--panel);
         font-size: 12px;
         text-transform: uppercase;
+      }
+
+      .machine .status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: none;
+        padding: 0;
+        text-indent: -9999px;
+        overflow: hidden;
+        background: var(--muted);
+      }
+
+      .machine .status.online {
+        background: var(--ok);
+      }
+
+      .machine .status.offline {
+        background: var(--danger);
       }
 
       .status.online {
@@ -223,40 +248,72 @@ const dashboardHtml = `<!doctype html>
         gap: 8px;
         border: 1px solid var(--line);
         background: var(--panel);
-        padding: 6px;
-        margin-bottom: 8px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
       }
 
       h2,
       h3 {
-        margin: 0 0 6px;
-        font-size: 14px;
+        margin: 0 0 14px;
+        font-size: 17px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .counts {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .counts strong {
+        font-size: 15px;
+        color: var(--ink);
       }
 
       .exec-form {
         display: grid;
-        grid-template-columns: 1fr 120px auto;
-        gap: 6px;
+        grid-template-columns: 1.5fr 140px auto;
+        gap: 12px;
         margin-bottom: 8px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--soft-line);
+      }
+
+      .exec-form input,
+      .exec-form button {
+        font-size: 16px;
       }
 
       .output {
         display: none;
         overflow: auto;
-        max-height: 240px;
         border: 1px solid var(--line);
         border-radius: 0;
         background: #111111;
         color: #eeeeee;
-        padding: 8px;
+        padding: 16px;
         font-family: "Courier New", Courier, monospace;
         font-size: 12px;
         white-space: pre-wrap;
-        margin: 0 0 8px;
+        margin: 0 0 20px;
       }
 
       .executions {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
         display: grid;
+        align-content: start;
         gap: 0;
         border-top: 1px solid var(--soft-line);
         border-left: 1px solid var(--soft-line);
@@ -267,13 +324,13 @@ const dashboardHtml = `<!doctype html>
         border-bottom: 1px solid var(--soft-line);
         border-radius: 0;
         background: var(--panel);
-        padding: 6px;
+        padding: 12px 16px;
       }
 
       .execution code {
         display: block;
         overflow: hidden;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
         text-overflow: ellipsis;
         white-space: nowrap;
         font-family: "Courier New", Courier, monospace;
@@ -281,8 +338,8 @@ const dashboardHtml = `<!doctype html>
       }
 
       .error {
-        min-height: 18px;
-        margin: 0 0 8px;
+        min-height: 4px;
+        margin: 0 0 4px;
         color: var(--danger);
       }
 
@@ -304,31 +361,33 @@ const dashboardHtml = `<!doctype html>
   <body>
     <main class="shell">
       <header>
-        <h1>zctl</h1>
+                <h1>zctl dashboard</h1>
         <div>
-          <button id="theme-toggle" type="button" class="secondary">Dark</button>
-          <button id="refresh" type="button" class="secondary">Refresh</button>
+          <button id="refresh" type="button" class="secondary" aria-label="Refresh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
+          <button id="theme-toggle" type="button" class="secondary" aria-label="Switch to dark mode"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
         </div>
       </header>
 
       <section class="panel">
-        <div class="auth">
-          <input id="token" type="password" autocomplete="off" placeholder="Operator bearer token" />
-          <button id="save-token" type="button">Use token</button>
-          <button id="clear-token" type="button" class="secondary">Clear</button>
-        </div>
+        <form id="exec-form" class="exec-form">
+          <input id="command" name="command" autocomplete="off" placeholder="Command, e.g. uname -a" />
+          <input id="timeout" name="timeout" inputmode="numeric" value="30" placeholder="Timeout (s)" />
+          <button id="run" type="submit">Run</button>
+        </form>
 
         <p id="error" class="error" role="alert"></p>
 
-        <div class="stats">
-          <div class="stat"><span>Machines</span><strong id="total">0</strong></div>
-          <div class="stat"><span>Online</span><strong id="online">0</strong></div>
-          <div class="stat"><span>Offline</span><strong id="offline">0</strong></div>
+        <div class="section-head">
+          <h2>Machines</h2>
+          <span class="counts">
+            <strong id="total">0</strong> total ·
+            <strong id="online">0</strong> online ·
+            <strong id="offline">0</strong> offline
+          </span>
         </div>
 
         <div class="grid">
           <section>
-            <h2>Machines</h2>
             <div id="machines" class="machine-list" aria-live="polite"></div>
           </section>
 
@@ -341,16 +400,17 @@ const dashboardHtml = `<!doctype html>
               <span id="machine-status" class="status">unknown</span>
             </div>
 
-            <form id="exec-form" class="exec-form">
-              <input id="command" name="command" autocomplete="off" placeholder="Command, e.g. uname -a" />
-              <input id="timeout" name="timeout" inputmode="numeric" placeholder="Timeout ms" />
-              <button id="run" type="submit">Run</button>
-            </form>
             <pre id="output" class="output"></pre>
 
-            <h3>Recent executions</h3>
+            <h3>Command history</h3>
             <div id="executions" class="executions" aria-live="polite"></div>
           </section>
+        </div>
+
+        <div class="auth">
+          <input id="token" type="password" autocomplete="off" placeholder="Operator bearer token" />
+          <button id="save-token" type="button">Use token</button>
+          <button id="clear-token" type="button" class="secondary">Clear</button>
         </div>
       </section>
     </main>
@@ -396,7 +456,11 @@ const dashboardHtml = `<!doctype html>
 
       function applyTheme(theme) {
         document.documentElement.dataset.theme = theme;
-        el.themeToggle.textContent = theme === 'dark' ? 'Light' : 'Dark';
+        const dark = theme === 'dark';
+        el.themeToggle.innerHTML = dark
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+          : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+        el.themeToggle.ariaLabel = dark ? 'Switch to light mode' : 'Switch to dark mode';
       }
 
       applyTheme(currentTheme());
@@ -452,12 +516,9 @@ const dashboardHtml = `<!doctype html>
               '<div class="meta"></div>';
             button.querySelector('.machine-name span').textContent = machine.hostname;
             const status = button.querySelector('.status');
-            status.textContent = machine.status;
-            status.classList.add(machine.status);
+            status.className = 'status ' + machine.status;
             button.querySelector('.meta').textContent =
-              [machine.os, machine.arch].filter(Boolean).join(' / ') +
-              ' | last seen ' +
-              formatDate(machine.lastSeen);
+              machine.status === 'offline' ? 'last seen ' + formatDate(machine.lastSeen) : '';
             button.addEventListener('click', () => selectMachine(machine.hostname));
             return button;
           })
@@ -491,7 +552,7 @@ const dashboardHtml = `<!doctype html>
 
       function renderExecutions(executions) {
         if (executions.length === 0) {
-          el.executions.innerHTML = '<p class="empty">No executions yet.</p>';
+          el.executions.innerHTML = '<p class="empty">No command history yet.</p>';
           return;
         }
 
@@ -529,6 +590,7 @@ const dashboardHtml = `<!doctype html>
         el.refresh.disabled = true;
         try {
           state.machines = await api('/machines');
+          state.machines.sort((a, b) => a.status === 'online' ? -1 : b.status === 'online' ? 1 : 0);
           if (state.selected) {
             state.selected = state.machines.find((m) => m.hostname === state.selected.hostname) || null;
           }
@@ -546,7 +608,7 @@ const dashboardHtml = `<!doctype html>
       el.saveToken.addEventListener('click', () => {
         state.token = el.token.value.trim();
         localStorage.setItem('zctl.operatorToken', state.token);
-        refresh();
+        refresh().then(() => { el.token.value = ''; });
       });
 
       el.clearToken.addEventListener('click', () => {
@@ -575,11 +637,12 @@ const dashboardHtml = `<!doctype html>
         el.run.disabled = true;
         try {
           const timeout = el.timeout.value.trim();
+          const timeoutMs = timeout ? Math.round(parseFloat(timeout) * 1000) : undefined;
           const result = await api('/machines/' + encodeURIComponent(state.selected.hostname) + '/exec', {
             method: 'POST',
             body: JSON.stringify({
               command: el.command.value,
-              ...(timeout ? { timeoutMs: Number(timeout) } : {})
+              ...(timeoutMs !== undefined ? { timeoutMs } : {})
             })
           });
           el.output.style.display = 'block';

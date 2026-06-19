@@ -27,5 +27,5 @@ RUN for pkg in /app/node_modules/.pnpm/node_modules/*; do \
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/health || exit 1
 CMD node_modules/.pnpm/node_modules/.bin/drizzle-kit migrate && node dist/index.js

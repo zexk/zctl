@@ -54,7 +54,7 @@ The core also serves a small operator dashboard:
 http://localhost:3000/dashboard
 ```
 
-Paste the same operator token into the dashboard to view machines, recent executions, and run commands. The page matches the system light/dark theme on first load and includes a manual theme toggle.
+Paste the same operator token into the dashboard to view machines, command history, and run commands.
 
 ## Features
 

@@ -89,7 +89,7 @@ describe('auth middleware', () => {
       const res = await app.inject({ method: 'GET', url: '/dashboard' });
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toContain('text/html');
-      expect(res.body).toContain('<h1>zctl</h1>');
+      expect(res.body).toContain('<h1>zctl dashboard</h1>');
       expect(res.body).toContain('id="theme-toggle"');
       expect(res.body).toContain('prefers-color-scheme: dark');
       expect(res.body).toContain('zctl.theme');

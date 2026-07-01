@@ -101,7 +101,7 @@ services.zctl.core = {
 };
 ```
 
-PostgreSQL is provisioned automatically (`database.createLocally = true` by default): a local database and role are created, and the service connects via Unix socket peer auth — no password required. To use an external database instead:
+PostgreSQL is provisioned automatically (`database.createLocally = true` by default): a local database and role are created, and the service connects via Unix socket peer auth, no password required. To use an external database instead:
 
 ```nix
 services.zctl.core.database.createLocally = false;
@@ -117,7 +117,7 @@ services.zctl.agents.default = {
 };
 ```
 
-Multiple agents per host (e.g. reaching different control planes) are supported via additional attrset keys — each becomes a separate systemd unit (`zctl-agent-<name>`).
+Multiple agents per host (e.g. reaching different control planes) are supported via additional attrset keys; each becomes a separate systemd unit (`zctl-agent-<name>`).
 
 **CLI** (operator machines):
 
